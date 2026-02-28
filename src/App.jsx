@@ -30,8 +30,8 @@ const LAYOUTS = {
   '6': [{x: 0.3, y: 0.2, flip: false}, {x: 0.7, y: 0.2, flip: false}, {x: 0.3, y: 0.5, flip: false}, {x: 0.7, y: 0.5, flip: false}, {x: 0.3, y: 0.8, flip: true}, {x: 0.7, y: 0.8, flip: true}],
   '7': [{x: 0.3, y: 0.2, flip: false}, {x: 0.7, y: 0.2, flip: false}, {x: 0.5, y: 0.35, flip: false}, {x: 0.3, y: 0.5, flip: false}, {x: 0.7, y: 0.5, flip: false}, {x: 0.3, y: 0.8, flip: true}, {x: 0.7, y: 0.8, flip: true}],
   '8': [{x: 0.3, y: 0.2, flip: false}, {x: 0.7, y: 0.2, flip: false}, {x: 0.5, y: 0.35, flip: false}, {x: 0.3, y: 0.5, flip: false}, {x: 0.7, y: 0.5, flip: false}, {x: 0.5, y: 0.65, flip: true}, {x: 0.3, y: 0.8, flip: true}, {x: 0.7, y: 0.8, flip: true}],
-  '9': [{x: 0.3, y: 0.2, flip: false}, {x: 0.7, y: 0.2, flip: false}, {x: 0.3, y: 0.4, flip: false}, {x: 0.7, y: 0.4, flip: false}, {x: 0.5, y: 0.5, flip: false}, {x: 0.3, y: 0.6, flip: true}, {x: 0.7, y: 0.6, flip: true}, {x: 0.3, y: 0.8, flip: true}, {x: 0.7, y: 0.8, flip: true}],
-  '10': [{x: 0.3, y: 0.2, flip: false}, {x: 0.7, y: 0.2, flip: false}, {x: 0.5, y: 0.3, flip: false}, {x: 0.3, y: 0.4, flip: false}, {x: 0.7, y: 0.4, flip: false}, {x: 0.3, y: 0.6, flip: true}, {x: 0.7, y: 0.6, flip: true}, {x: 0.5, y: 0.7, flip: true}, {x: 0.3, y: 0.8, flip: true}, {x: 0.7, y: 0.8, flip: true}]
+  '9': [{x: 0.3, y: 0.18, flip: false}, {x: 0.7, y: 0.18, flip: false}, {x: 0.3, y: 0.38, flip: false}, {x: 0.7, y: 0.38, flip: false}, {x: 0.5, y: 0.5, flip: false}, {x: 0.3, y: 0.62, flip: true}, {x: 0.7, y: 0.62, flip: true}, {x: 0.3, y: 0.82, flip: true}, {x: 0.7, y: 0.82, flip: true}],
+  '10': [{x: 0.3, y: 0.18, flip: false}, {x: 0.7, y: 0.18, flip: false}, {x: 0.5, y: 0.3, flip: false}, {x: 0.3, y: 0.4, flip: false}, {x: 0.7, y: 0.4, flip: false}, {x: 0.3, y: 0.6, flip: true}, {x: 0.7, y: 0.6, flip: true}, {x: 0.5, y: 0.7, flip: true}, {x: 0.3, y: 0.82, flip: true}, {x: 0.7, y: 0.82, flip: true}]
 };
 
 const CARD_TYPES = [
@@ -106,7 +106,7 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
               ) : (
                 <div className="relative w-full h-full">
                    {LAYOUTS[card.rank]?.map((pos, i) => (
-                     <img key={i} src={SUIT_SVGS[suitKey]} alt="pip" className="absolute w-12 h-12 -ml-6 -mt-6 transition-all duration-700 hover:scale-110"
+                     <img key={i} src={SUIT_SVGS[suitKey]} alt="pip" className="absolute w-10 h-10 -ml-5 -mt-5 transition-all duration-700 hover:scale-110"
                           style={{
                              left: `${pos.x * 100}%`,
                              top: `${pos.y * 100}%`,
@@ -844,7 +844,7 @@ const App = () => {
               </div>
             </div>
 
-            <div className="relative aspect-[16/9] w-full bg-[#0a0c10] h-min rounded-[4rem] border-[12px] border-neutral-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col items-center justify-between py-16 px-12 group/table">
+            <div className="relative w-full bg-[#0a0c10] rounded-[4rem] border-[12px] border-neutral-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col items-center justify-center gap-12 py-12 px-12 group/table min-h-[750px]">
                {/* Felt Background Pattern */}
                <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_#1e293b_0%,_transparent_100%)]" />
                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/felt.png')]" />
@@ -854,7 +854,7 @@ const App = () => {
                   <div className="px-4 py-1.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/5 text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">
                     Dealer {bjState === 'gameOver' ? `(${getBjScore(bjDealerHand)})` : ''}
                   </div>
-                  <div className="flex justify-center mb-10 space-x-4 perspective-1000">
+                  <div className="flex justify-center space-x-4 perspective-1000">
                      {bjDealerHand.map((card, i) => (
                        <PlayingCard 
                          key={i} 
@@ -881,10 +881,38 @@ const App = () => {
 
                {/* Player Area */}
                <div className="relative z-10 w-full flex flex-col items-center gap-6">
-                  <div className="flex justify-center mb-40 space-x-4 perspective-1000">
-                     {bjPlayerHand.map((card, i) => (
-                       <PlayingCard key={i} card={card} images={images} scale={0.8} className="shadow-2xl hover:translate-y-[-20px] transition-transform duration-500" />
-                     ))}
+                  <div className="flex items-center justify-center gap-12 w-full">
+                     {/* Hit Button Left */}
+                     {bjState === 'playing' && (
+                       <button 
+                         onClick={hitBlackjack}
+                         className="w-20 h-20 bg-neutral-900/80 hover:bg-neutral-800 text-white rounded-full font-black text-xs uppercase tracking-widest border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/hit animate-in fade-in slide-in-from-right-4 duration-500"
+                       >
+                         <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover/hit:bg-white/10 transition-colors">
+                            <Play size={14} className="rotate-90 fill-white" />
+                         </div>
+                         Hit
+                       </button>
+                     )}
+
+                     <div className="flex justify-center space-x-4 perspective-1000">
+                        {bjPlayerHand.map((card, i) => (
+                          <PlayingCard key={i} card={card} images={images} scale={0.8} className="shadow-2xl hover:translate-y-[-20px] transition-transform duration-500" />
+                        ))}
+                     </div>
+
+                     {/* Stand Button Right */}
+                     {bjState === 'playing' && (
+                       <button 
+                         onClick={standBlackjack}
+                         className="w-20 h-20 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] border border-white/10 transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/stand animate-in fade-in slide-in-from-left-4 duration-500"
+                       >
+                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover/stand:bg-white/20 transition-colors">
+                            <X size={16} strokeWidth={3} />
+                         </div>
+                         Stand
+                       </button>
+                     )}
                   </div>
                   <div className="px-4 py-1.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/5 text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">
                     Player ({bjPlayerHand.length > 0 ? getBjScore(bjPlayerHand) : 0})
@@ -897,7 +925,7 @@ const App = () => {
             </div>
 
             {/* Game Controls */}
-            <div className="flex justify-center items-center gap-8 bg-neutral-900/50 backdrop-blur-xl p-8 rounded-[3rem] border border-white/5 shadow-2xl">
+            <div className="flex justify-center items-center gap-8 bg-neutral-900/50 backdrop-blur-xl p-8 rounded-[3rem] border border-white/5 shadow-2xl min-h-[140px]">
                {bjState === 'betting' || bjState === 'gameOver' ? (
                  <div className="flex flex-col md:flex-row items-center gap-8 w-full max-w-2xl">
                    <div className="flex-1 space-y-3 w-full">
@@ -925,19 +953,9 @@ const App = () => {
                    </button>
                  </div>
                ) : (
-                 <div className="flex gap-6 animate-in slide-in-from-bottom-4 duration-500">
-                   <button 
-                     onClick={hitBlackjack}
-                     className="px-16 py-6 bg-neutral-800 hover:bg-neutral-700 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest border border-white/10 shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center gap-3"
-                   >
-                     Hit
-                   </button>
-                   <button 
-                     onClick={standBlackjack}
-                     className="px-16 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.05] active:scale-[0.95]"
-                   >
-                     Stand
-                   </button>
+                 <div className="flex flex-col items-center gap-2 animate-in fade-in duration-700">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.8)] animate-pulse" />
+                    <span className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.4em]">Game in Progress</span>
                  </div>
                )}
             </div>
