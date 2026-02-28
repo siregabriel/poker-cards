@@ -844,7 +844,7 @@ const App = () => {
               </div>
             </div>
 
-            <div className="relative aspect-[16/9] w-full bg-[#0a0c10] rounded-[4rem] border-[12px] border-neutral-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col items-center justify-between py-16 px-12 group/table">
+            <div className="relative aspect-[16/9] w-full bg-[#0a0c10] h-min rounded-[4rem] border-[12px] border-neutral-900 shadow-[0_40px_100px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col items-center justify-between py-16 px-12 group/table">
                {/* Felt Background Pattern */}
                <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_#1e293b_0%,_transparent_100%)]" />
                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/felt.png')]" />
@@ -854,7 +854,7 @@ const App = () => {
                   <div className="px-4 py-1.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/5 text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">
                     Dealer {bjState === 'gameOver' ? `(${getBjScore(bjDealerHand)})` : ''}
                   </div>
-                  <div className="flex justify-center -space-x-20 perspective-1000">
+                  <div className="flex justify-center mb-10 space-x-4 perspective-1000">
                      {bjDealerHand.map((card, i) => (
                        <PlayingCard 
                          key={i} 
@@ -881,7 +881,7 @@ const App = () => {
 
                {/* Player Area */}
                <div className="relative z-10 w-full flex flex-col items-center gap-6">
-                  <div className="flex justify-center -space-x-20 perspective-1000">
+                  <div className="flex justify-center mb-40 space-x-4 perspective-1000">
                      {bjPlayerHand.map((card, i) => (
                        <PlayingCard key={i} card={card} images={images} scale={0.8} className="shadow-2xl hover:translate-y-[-20px] transition-transform duration-500" />
                      ))}
@@ -1086,55 +1086,55 @@ const App = () => {
 
       {/* ================= MODAL: IMAGE EDITOR ================= */}
       {editingId && (
-        <div className="fixed inset-0 z-[110] bg-neutral-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="w-full max-w-2xl bg-neutral-900 rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative">
-            <div className="p-10 border-b border-white/5 flex justify-between items-center">
+        <div className="fixed inset-0 z-[110] bg-neutral-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-2xl bg-neutral-900 rounded-[2rem] sm:rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] relative flex flex-col max-h-[95vh]">
+            <div className="p-6 sm:p-10 border-b border-white/5 flex justify-between items-center shrink-0">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center">
-                  <Scissors className="text-indigo-400" size={24} />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center">
+                  <Scissors className="text-indigo-400" size={20} />
                 </div>
                 <div className="space-y-0.5">
-                  <h3 className="text-2xl font-black text-white tracking-tight">Fine Tune</h3>
-                  <p className="text-xs text-neutral-500 font-bold uppercase tracking-widest">Adjusting {CARD_TYPES.find(t => t.id === editingId)?.label}</p>
+                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">Fine Tune</h3>
+                  <p className="text-[10px] sm:text-xs text-neutral-500 font-bold uppercase tracking-widest">Adjusting {CARD_TYPES.find(t => t.id === editingId)?.label}</p>
                 </div>
               </div>
-              <button onClick={() => setEditingId(null)} className="p-3 hover:bg-white/5 rounded-2xl text-neutral-500 hover:text-white transition-colors"><X /></button>
+              <button onClick={() => setEditingId(null)} className="p-2 sm:p-3 hover:bg-white/5 rounded-2xl text-neutral-500 hover:text-white transition-colors"><X /></button>
             </div>
             
-            <div className="p-12 flex flex-col items-center gap-12">
-              <div className="relative w-64 h-96 bg-black rounded-2xl overflow-hidden ring-4 ring-indigo-600/30 flex items-center justify-center shadow-2xl">
+            <div className="p-6 sm:p-12 flex flex-col items-center gap-8 sm:gap-12 overflow-y-auto custom-scrollbar">
+              <div className="relative w-48 h-72 sm:w-64 sm:h-96 bg-black rounded-2xl overflow-hidden ring-4 ring-indigo-600/30 flex items-center justify-center shadow-2xl shrink-0">
                 <img 
                   src={images[editingId]} 
                   alt="Editing" 
                   style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, transition: 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)' }}
                   className="max-w-none w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 pointer-events-none border-[30px] border-black/40"></div>
-                <div className="absolute inset-0 pointer-events-none border border-white/10 m-[30px]"></div>
+                <div className="absolute inset-0 pointer-events-none border-[20px] sm:border-[30px] border-black/40"></div>
+                <div className="absolute inset-0 pointer-events-none border border-white/10 m-[20px] sm:m-[30px]"></div>
               </div>
 
-              <div className="w-full space-y-8">
+              <div className="w-full space-y-6 sm:space-y-8">
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-3 text-sm font-black text-neutral-400 uppercase tracking-widest"><ZoomIn size={18} /> Magnification</span>
-                    <span className="font-mono text-indigo-400 font-black">{Math.round(zoom * 100)}%</span>
+                    <span className="flex items-center gap-3 text-xs sm:text-sm font-black text-neutral-400 uppercase tracking-widest"><ZoomIn size={16} /> Magnification</span>
+                    <span className="font-mono text-indigo-400 font-black text-sm sm:text-base">{Math.round(zoom * 100)}%</span>
                   </div>
                   <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer"/>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-3 text-sm font-black text-neutral-400 uppercase tracking-widest"><RotateCw size={18} /> Rotation</span>
-                    <span className="font-mono text-indigo-400 font-black">{rotation}°</span>
+                    <span className="flex items-center gap-3 text-xs sm:text-sm font-black text-neutral-400 uppercase tracking-widest"><RotateCw size={16} /> Rotation</span>
+                    <span className="font-mono text-indigo-400 font-black text-sm sm:text-base">{rotation}°</span>
                   </div>
                   <input type="range" min="0" max="360" step="1" value={rotation} onChange={(e) => setRotation(parseInt(e.target.value))} className="w-full accent-indigo-500 h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer"/>
                 </div>
               </div>
             </div>
 
-            <div className="p-10 bg-black/40 border-t border-white/5 flex gap-6">
-              <button onClick={() => { setZoom(1); setRotation(0); setEditingId(null); }} className="flex-1 py-5 rounded-2xl border-2 border-neutral-800 text-neutral-500 hover:bg-neutral-800 hover:text-white font-black uppercase tracking-widest text-xs transition-all">Discard</button>
-              <button onClick={() => setEditingId(null)} className="flex-1 py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-600/20">Apply Changes</button>
+            <div className="p-6 sm:p-10 bg-black/40 border-t border-white/5 flex gap-4 sm:gap-6 shrink-0">
+              <button onClick={() => { setZoom(1); setRotation(0); setEditingId(null); }} className="flex-1 py-4 sm:py-5 rounded-2xl border-2 border-neutral-800 text-neutral-500 hover:bg-neutral-800 hover:text-white font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all">Discard</button>
+              <button onClick={() => setEditingId(null)} className="flex-1 py-4 sm:py-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all shadow-xl shadow-indigo-600/20">Accept</button>
             </div>
           </div>
         </div>
