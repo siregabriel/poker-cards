@@ -1,10 +1,40 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Upload, CreditCard, Download, Image as ImageIcon, 
   CheckCircle2, AlertCircle, X, Maximize2, 
   RotateCw, ZoomIn, Scissors, Palette, Loader2,
-  Eye, Layout, Gamepad2, Coins, Play, RotateCcw
+  Eye, Layout, Coins, Play, RotateCcw,
+  Share2, Save, Link as LinkIcon, Cloud, Rabbit
 } from 'lucide-react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+
+// ================= FIREBASE INITIALIZATION =================
+let app, auth, db;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'poker-studio-custom';
+const isLocal = typeof __firebase_config === 'undefined';
+
+try {
+  // Verify environment (cloud or local Vite/Vercel)
+  const firebaseConfig = !isLocal 
+    ? JSON.parse(__firebase_config) 
+    : {
+        // Correct API Key and configuration
+        apiKey: "AIzaSyBD3nbgsOehg7nLpqU3flWZlbn2Y084kRw", 
+        authDomain: "atpoker-a07e0.firebaseapp.com",
+        projectId: "atpoker-a07e0",
+        storageBucket: "atpoker-a07e0.firebasestorage.app",
+        messagingSenderId: "722444230328",
+        appId: "1:722444230328:web:8437d76a048f7b19a89e4d"
+      };
+  
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+} catch (error) {
+  console.warn("Firebase failed to initialize. Make sure you have an internet connection.", error);
+}
 
 // Configuration Constants
 const PRICE_MXN = 199;
@@ -50,6 +80,50 @@ const CARD_TYPES = [
 const getSuitKey = (card) => {
   if (card.isJoker) return card.isRed ? '★_red' : '★_black';
   return card.suit;
+};
+
+// ================= IMAGE COMPRESSOR HELPER =================
+// Aggressive compression to ensure it passes Firebase's 1MB limit
+const compressImage = (base64Str, maxSize = 600) => {
+  return new Promise((resolve) => {
+    if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:image')) {
+      resolve(base64Str); // Return as is if not a valid image
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      // Calculate proportion based on the longest side
+      if (width > height) {
+        if (width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      
+      // Fill with white background in case it was a transparent PNG (JPEG doesn't support transparency)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Compress to JPEG with 50% quality
+      resolve(canvas.toDataURL('image/jpeg', 0.5));
+    };
+    img.onerror = () => resolve(base64Str);
+    img.src = base64Str;
+  });
 };
 
 // ================= REUSABLE PLAYING CARD COMPONENT =================
@@ -149,6 +223,7 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
 
 
 const App = () => {
+  const [user, setUser] = useState(null);
   const [images, setImages] = useState({});
   const [isPaid, setIsPaid] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -156,11 +231,80 @@ const App = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [view, setView] = useState('editor'); // editor | preview | games | blackjack | poker
   const [balance, setBalance] = useState(1000);
+  const [isSavingToCloud, setIsSavingToCloud] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isLoadingDesign, setIsLoadingDesign] = useState(true);
   
-  // Estado para el editor de imagen
+  // Image editor state
   const [editingId, setEditingId] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+
+  // ================= FIREBASE AUTH & INIT =================
+  useEffect(() => {
+    const initAuth = async () => {
+      if (!auth) return; // Safely skip if Firebase auth wasn't initialized
+      try {
+        if (!isLocal && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          // This signs in anonymously locally
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Auth init error:", err);
+      }
+    };
+    
+    initAuth();
+    
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, setUser);
+      return () => unsubscribe();
+    }
+  }, []);
+
+  // Check for shared design ID in URL
+  useEffect(() => {
+    const checkUrlForDesign = async () => {
+      // Only check this if we have authentication and an active database
+      if (!user || !db) {
+         setIsLoadingDesign(false);
+         return; 
+      }
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedDesignId = urlParams.get('deck');
+
+      if (sharedDesignId) {
+        setIsLoadingDesign(true);
+        try {
+          const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'designs', sharedDesignId);
+          const docSnap = await getDoc(docRef);
+          
+          if (docSnap.exists()) {
+            setImages(docSnap.data().images || {});
+            setView('games'); // Skip directly to games
+          } else {
+            console.error("Shared design not found.");
+            alert("We couldn't find the shared deck. Starting with a new one.");
+            // Remove the invalid param from URL cleanly
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.pushState({path:newUrl},'',newUrl);
+          }
+        } catch (err) {
+          console.error("Error loading shared design:", err);
+        } finally {
+          setIsLoadingDesign(false);
+        }
+      } else {
+        setIsLoadingDesign(false);
+      }
+    };
+
+    checkUrlForDesign();
+  }, [user]);
+
 
   // Base Deck
   const generateDeck = (includeJokers = false) => {
@@ -200,7 +344,7 @@ const App = () => {
     return newDeck;
   };
 
-  // ================= ESTADO Y LÓGICA DE BLACKJACK =================
+  // ================= BLACKJACK STATE & LOGIC =================
   const [bjDeck, setBjDeck] = useState([]);
   const [bjPlayerHand, setBjPlayerHand] = useState([]);
   const [bjDealerHand, setBjDealerHand] = useState([]);
@@ -221,7 +365,7 @@ const App = () => {
   };
 
   const startBlackjack = () => {
-    if (balance < currentBet) { alert("Sin fondos suficientes"); return; }
+    if (balance < currentBet) { alert("Insufficient funds"); return; }
     setBalance(prev => prev - currentBet);
     const newDeck = shuffleDeck(generateDeck(false));
     setBjPlayerHand([newDeck[0], newDeck[2]]);
@@ -232,7 +376,7 @@ const App = () => {
 
     if (getBjScore([newDeck[0], newDeck[2]]) === 21) {
       setBjState('gameOver');
-      setBjMessage('¡Blackjack! Has ganado.');
+      setBjMessage('Blackjack! You win.');
       setBalance(prev => prev + (currentBet * 2.5));
     }
   };
@@ -245,7 +389,7 @@ const App = () => {
     setBjDeck(bjDeck.slice(1));
     if (getBjScore(newHand) > 21) {
       setBjState('gameOver');
-      setBjMessage('Te pasaste. Gana el Dealer.');
+      setBjMessage('Bust. Dealer wins.');
     }
   };
 
@@ -254,7 +398,7 @@ const App = () => {
     let currentDealerHand = [...bjDealerHand];
     let currentDeck = [...bjDeck];
     
-    // Dealer juega automáticamente
+    // Dealer plays automatically
     let dealerScore = getBjScore(currentDealerHand);
     while (dealerScore < 17 && currentDeck.length > 0) {
       currentDealerHand.push(currentDeck[0]);
@@ -267,20 +411,20 @@ const App = () => {
     
     setBjState('gameOver');
     if (dealerScore > 21) {
-      setBjMessage('El Dealer se pasó. ¡Ganaste!');
+      setBjMessage('Dealer busts. You win!');
       setBalance(prev => prev + (currentBet * 2));
     } else if (playerScore > dealerScore) {
-      setBjMessage('¡Ganaste!');
+      setBjMessage('You win!');
       setBalance(prev => prev + (currentBet * 2));
     } else if (dealerScore > playerScore) {
-      setBjMessage('Gana el Dealer.');
+      setBjMessage('Dealer wins.');
     } else {
-      setBjMessage('Empate.');
-      setBalance(prev => prev + currentBet); // Devuelve apuesta
+      setBjMessage('Push.');
+      setBalance(prev => prev + currentBet); // Return bet
     }
   };
 
-  // ================= ESTADO Y LÓGICA DE VIDEO POKER (Jacks or Better) =================
+  // ================= VIDEO POKER STATE & LOGIC (Jacks or Better) =================
   const [vpDeck, setVpDeck] = useState([]);
   const [vpHand, setVpHand] = useState([]);
   const [vpHeld, setVpHeld] = useState([false, false, false, false, false]);
@@ -290,7 +434,7 @@ const App = () => {
   const rankValues = { '2':2, '3':3, '4':4, '5':5, '6':6, '7':7, '8':8, '9':9, '10':10, 'J':11, 'Q':12, 'K':13, 'A':14 };
 
   const evaluatePokerHand = (hand) => {
-    if (hand.length < 5) return { name: "Nada", mult: 0 };
+    if (hand.length < 5) return { name: "Nothing", mult: 0 };
     const suits = hand.map(c => c.suit);
     const ranks = hand.map(c => rankValues[c.rank]).sort((a,b) => a - b);
     const isFlush = suits.every(s => s === suits[0]);
@@ -301,24 +445,24 @@ const App = () => {
     ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
     const freq = Object.values(counts).sort((a,b) => b - a);
 
-    if (isFlush && isStraight && ranks[4] === 14) return { name: "Escalera Real", mult: 250 };
-    if (isFlush && isStraight) return { name: "Escalera de Color", mult: 50 };
-    if (freq[0] === 4) return { name: "Póker", mult: 25 };
+    if (isFlush && isStraight && ranks[4] === 14) return { name: "Royal Flush", mult: 250 };
+    if (isFlush && isStraight) return { name: "Straight Flush", mult: 50 };
+    if (freq[0] === 4) return { name: "Four of a Kind", mult: 25 };
     if (freq[0] === 3 && freq[1] === 2) return { name: "Full House", mult: 9 };
-    if (isFlush) return { name: "Color", mult: 6 };
-    if (isStraight) return { name: "Escalera", mult: 4 };
-    if (freq[0] === 3) return { name: "Trío", mult: 3 };
-    if (freq[0] === 2 && freq[1] === 2) return { name: "Doble Pareja", mult: 2 };
+    if (isFlush) return { name: "Flush", mult: 6 };
+    if (isStraight) return { name: "Straight", mult: 4 };
+    if (freq[0] === 3) return { name: "Three of a Kind", mult: 3 };
+    if (freq[0] === 2 && freq[1] === 2) return { name: "Two Pair", mult: 2 };
     
     // Jacks or Better
     const hasJacksOrBetter = Object.keys(counts).some(r => counts[r] === 2 && parseInt(r) >= 11);
-    if (hasJacksOrBetter) return { name: "Jotas o Mejor", mult: 1 };
+    if (hasJacksOrBetter) return { name: "Jacks or Better", mult: 1 };
 
-    return { name: "Nada", mult: 0 };
+    return { name: "Nothing", mult: 0 };
   };
 
   const startVideoPoker = () => {
-    if (balance < currentBet) { alert("Sin fondos suficientes"); return; }
+    if (balance < currentBet) { alert("Insufficient funds"); return; }
     setBalance(prev => prev - currentBet);
     const newDeck = shuffleDeck(generateDeck(false));
     setVpHand(newDeck.slice(0, 5));
@@ -343,14 +487,14 @@ const App = () => {
     const result = evaluatePokerHand(newHand);
     if (result.mult > 0) {
       const winAmount = currentBet * result.mult;
-      setVpMessage(`¡${result.name}! Ganas $${winAmount}`);
+      setVpMessage(`¡${result.name}! You win $${winAmount}`);
       setBalance(prev => prev + winAmount + currentBet);
     } else {
-      setVpMessage('Sin premio. Suerte a la próxima.');
+      setVpMessage('No win. Better luck next time.');
     }
   };
 
-  // ================= FUNCIONES BASE =================
+  // ================= BASE FUNCTIONS =================
   const handleFileUpload = (id, e) => {
     const file = e.target.files[0];
     if (file) {
@@ -371,7 +515,7 @@ const App = () => {
     });
   };
 
-  const handleSaveDesign = () => {
+  const handleSaveDesignLocal = () => {
     const data = JSON.stringify(images);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -380,6 +524,76 @@ const App = () => {
     link.download = `poker-studio-design-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveToCloud = async () => {
+    if (!db || !auth) {
+      alert("Error: Firebase configuration is not initialized correctly. Check your firebaseConfig.");
+      return;
+    }
+    
+    let currentUser = user || auth.currentUser;
+
+    if (!currentUser) {
+      try {
+        const credential = await signInAnonymously(auth);
+        currentUser = credential.user;
+        setUser(currentUser);
+      } catch (err) {
+        alert("🚨 Firebase Authentication Error:\n\n" + err.message + "\n\nMake sure 'Anonymous' is enabled in Firebase.");
+        return;
+      }
+    }
+    
+    setIsSavingToCloud(true);
+    try {
+      // 1. Strong Image Compression before uploading (Avoids exceeding 1MB limit)
+      const compressedImages = {};
+      for (const [key, base64Data] of Object.entries(images)) {
+          // Use 600px instead of 800px to be even safer
+          compressedImages[key] = await compressImage(base64Data, 600); 
+      }
+
+      // 2. Save to Database
+      const designId = crypto.randomUUID();
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'designs', designId);
+      
+      await setDoc(docRef, {
+        creatorId: currentUser.uid,
+        createdAt: new Date().toISOString(),
+        images: compressedImages // Save the already compressed images
+      });
+
+      // 3. Generate final URL
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('deck', designId);
+      setShareUrl(currentUrl.toString());
+
+    } catch (error) {
+      console.error("Error saving design to cloud:", error);
+      if (error.message && error.message.includes("payload size")) {
+        alert("🚨 The deck is still too large for the database (1MB limit).\n\nTry uploading simpler or lower resolution images.");
+      } else {
+        alert("🚨 Firestore Error:\n\n" + error.message + "\n\nIf it says 'Missing or insufficient permissions', go to Firestore -> Rules and set them to Test Mode (allow read, write: if true;).");
+      }
+    } finally {
+      setIsSavingToCloud(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    try {
+      // Using execCommand as clipboard API might be restricted in iframes
+      const tempInput = document.createElement('input');
+      tempInput.value = shareUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      alert("Link copied to clipboard! Anyone with this link will enter directly to play with your deck.");
+    } catch (err) {
+      console.error("Failed to copy", err);
+    }
   };
 
   const handleLoadDesign = (e) => {
@@ -400,7 +614,7 @@ const App = () => {
 
   const handlePayment = () => {
     setIsProcessing(true);
-    // Simular procesamiento de pago
+    // Simulate payment processing
     setTimeout(() => {
       setIsProcessing(false);
       setIsPaid(true);
@@ -448,7 +662,7 @@ const App = () => {
       const marginX = (210 - (cardW * 3)) / 2;
       const marginY = (297 - (cardH * 3)) / 2;
 
-      const deck = generateDeck(true); // Con Jokers
+      const deck = generateDeck(true); // With Jokers
       const CARDS_PER_PAGE = 9;
       const totalPages = Math.ceil(deck.length / CARDS_PER_PAGE);
 
@@ -559,17 +773,28 @@ const App = () => {
         }
       }
 
-      const fileName = isSample ? 'Muestra_Mazo_Poker.pdf' : 'Mazo_Poker_Personalizado.pdf';
+      const fileName = isSample ? 'Sample_Poker_Deck.pdf' : 'Custom_Poker_Deck.pdf';
       doc.save(fileName);
     } catch (error) {
-      console.error("Error al generar PDF:", error);
-      alert("Error generando el PDF. Asegúrate de haber instalado jspdf (npm install jspdf)");
+      console.error("Error generating PDF:", error);
+      alert("Error generating PDF. Make sure you have installed jspdf (npm install jspdf)");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const allImagesUploaded = CARD_TYPES.filter(t => t.id !== 'customBackground').every(type => images[type.id]);
+  const hasAnyImage = Object.keys(images).length > 0;
+
+  if (isLoadingDesign) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-white">
+        <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mb-4" />
+        <h2 className="text-2xl font-black tracking-widest uppercase">Loading Custom Deck</h2>
+        <p className="text-neutral-500 mt-2">Preparing the casino floor...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden antialiased">
@@ -594,7 +819,7 @@ const App = () => {
             {[
               { id: 'editor', label: 'Design', icon: Palette },
               { id: 'preview', label: 'Preview', icon: Eye },
-              { id: 'games', label: 'Casino', icon: Gamepad2 }
+              { id: 'games', label: 'Casino', icon: Rabbit }
             ].map(item => (
               <button 
                 key={item.id}
@@ -699,13 +924,13 @@ const App = () => {
                       <div className="flex items-center gap-3">
                         <div className="flex gap-2 mr-2 border-r border-white/10 pr-4">
                           <button 
-                            onClick={handleSaveDesign}
-                            title="Save Design JSON"
+                            onClick={handleSaveDesignLocal}
+                            title="Save Backup Locally"
                             className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
                           >
-                            <Download size={14} />
+                            <Save size={14} />
                           </button>
-                          <label className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                          <label className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer" title="Load Backup">
                             <Upload size={14} />
                             <input type="file" className="hidden" accept=".json" onChange={handleLoadDesign} />
                           </label>
@@ -730,7 +955,52 @@ const App = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-8 pt-4">
+                  {/* Public Share Section */}
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center px-1 mb-2">
+                       <span className="text-neutral-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2"><Cloud size={14} /> Cloud Casino</span>
+                    </div>
+                    
+                    {!shareUrl ? (
+                      <button 
+                        disabled={!hasAnyImage || isSavingToCloud}
+                        onClick={handleSaveToCloud}
+                        className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all duration-300 ${
+                          hasAnyImage && !isSavingToCloud
+                            ? "bg-neutral-800 text-white hover:bg-neutral-700 shadow-lg" 
+                            : "bg-neutral-900 text-neutral-600 cursor-not-allowed"
+                        }`}
+                      >
+                        {isSavingToCloud ? <Loader2 size={18} className="animate-spin" /> : <Share2 size={18} />}
+                        Publish & Share Link
+                      </button>
+                    ) : (
+                      <div className="space-y-3 animate-in fade-in">
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl">
+                           <p className="text-green-400 text-xs font-bold text-center">Design published to the cloud!</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            readOnly 
+                            value={shareUrl} 
+                            className="flex-1 bg-neutral-950 border border-white/10 rounded-xl px-3 text-xs font-mono text-neutral-400 focus:outline-none"
+                          />
+                          <button 
+                            onClick={handleCopyLink}
+                            className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white transition-colors"
+                            title="Copy Link"
+                          >
+                            <LinkIcon size={16} />
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-neutral-500 text-center leading-tight">Share this link. Anyone opening it will go directly to the casino with your deck.</p>
+                      </div>
+                    )}
+                  </div>
+
+
+                  <div className="space-y-8 pt-4 border-t border-white/5">
                     <div className="flex justify-between items-end">
                       <div className="space-y-1">
                         <span className="block text-[10px] text-neutral-500 font-black uppercase tracking-[0.3em]">Total Investment</span>
@@ -830,11 +1100,11 @@ const App = () => {
           <div className="space-y-24 py-12">
             <div className="text-center space-y-8">
               <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] mx-auto flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(79,70,229,0.4)] ring-4 ring-indigo-500/20">
-                 <Gamepad2 size={40} className="text-white" />
+                 <Rabbit size={40} className="text-white" />
               </div>
-              <div className="space-y-4">
-                <h1 className="text-7xl font-black text-white tracking-tight">The High Roller <span className="text-indigo-500">Casino</span></h1>
-                <p className="text-neutral-500 text-xl max-w-2xl mx-auto leading-relaxed">Experience your custom deck in a professional environment. Use your virtual balance to test the cards in our exclusive mini-games.</p>
+              <div className="space-y-6">
+                <h1 className="text-7xl font-black text-indigo-500 tracking-tight">You Followed the <span className="text-white">White Rabbit</span></h1>
+                <p className="text-neutral-500 text-xl max-w-1l mx-auto leading-relaxed">Curiouser and curiouser! You followed the White Rabbit down the hole and landed straight at the Atlas Blackjack and Poker table. Welcome to the madness—ready to chase 21.</p>
               </div>
               
               <div className="inline-flex items-center gap-4 bg-neutral-900 px-8 py-4 rounded-[2rem] border border-white/5 font-black text-2xl shadow-2xl ring-1 ring-white/5 relative group">
@@ -860,7 +1130,7 @@ const App = () => {
                   id: 'blackjack', 
                   title: 'Blackjack', 
                   desc: 'Challenge the house and hit 21 using your unique custom deck.',
-                  icon: Gamepad2,
+                  icon: Rabbit,
                   accent: 'indigo',
                   action: () => { setBjState('betting'); setView('blackjack'); }
                 },
@@ -879,7 +1149,7 @@ const App = () => {
                   className="group bg-neutral-900/40 border border-white/5 rounded-[3rem] p-12 hover:bg-neutral-900/60 hover:border-white/10 transition-all duration-500 cursor-pointer shadow-2xl relative overflow-hidden flex flex-col items-start"
                 >
                   <div className={`absolute -right-12 -bottom-12 opacity-[0.03] text-white group-hover:opacity-10 group-hover:scale-110 transition-all duration-700 pointer-events-none`}>
-                     {game.id === 'blackjack' ? <Gamepad2 size={280} /> : <div className="font-serif font-black text-[18rem] leading-none">A♠</div>}
+                     {game.id === 'blackjack' ? <Rabbit size={280} /> : <div className="font-serif font-black text-[18rem] leading-none">A♠</div>}
                   </div>
                   
                   <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-8 ring-1 ring-white/10 group-hover:bg-indigo-600 transition-colors duration-500">
@@ -1237,7 +1507,7 @@ const App = () => {
         </div>
       )}
 
-      {/* ================= MODAL: SECURE PAYMENT ================= */}
+      {/* ================= MODAL: SECURE PAYMENT (MOCKED UI FOR PREVIEW) ================= */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-8 bg-neutral-950/90 backdrop-blur-2xl animate-in fade-in duration-500">
           <div className="bg-neutral-900 border border-white/10 w-full max-w-lg rounded-[3.5rem] p-12 animate-in zoom-in slide-in-from-bottom-8 duration-700 shadow-[0_50px_150px_rgba(0,0,0,0.8)] relative overflow-hidden">
@@ -1251,56 +1521,14 @@ const App = () => {
               <button onClick={() => setShowPaymentModal(false)} className="p-3 hover:bg-white/5 rounded-2xl text-neutral-500 hover:text-white transition-colors"><X /></button>
             </div>
 
-            <div className="space-y-10">
-              <div className="bg-black/40 border border-white/5 p-8 rounded-3xl relative overflow-hidden group/amount">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-[40px] rounded-full -mr-16 -mt-16 group-hover/amount:bg-indigo-600/10 transition-colors" />
-                <p className="text-[10px] text-neutral-600 font-black uppercase tracking-[0.3em] mb-3">Amount Due</p>
-                <div className="flex items-baseline gap-3">
-                  <p className="text-6xl font-black text-white tracking-tighter">${PRICE_MXN}.00</p>
-                  <p className="text-neutral-500 font-black uppercase tracking-widest">MXN</p>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">Card Details</label>
-                  <div className="bg-neutral-950 border border-white/5 p-5 rounded-2xl text-white flex items-center justify-between group/input focus-within:border-indigo-500/50 transition-colors shadow-inner">
-                    <div className="flex items-center gap-4 font-mono text-xl">
-                      <CreditCard size={24} className="text-indigo-500" />
-                      <span className="tracking-widest opacity-80">•••• •••• •••• 4242</span>
-                    </div>
-                    <div className="w-10 h-6 bg-neutral-800 rounded-md shadow-inner"></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">Expiry</label>
-                    <div className="bg-neutral-950 border border-white/5 p-5 rounded-2xl text-white font-mono text-lg text-center shadow-inner">12 / 28</div>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">CVC</label>
-                    <div className="bg-neutral-950 border border-white/5 p-5 rounded-2xl text-white font-mono text-lg text-center shadow-inner">•••</div>
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                onClick={handlePayment} disabled={isProcessing}
-                className="w-full py-6 bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-neutral-800 disabled:text-neutral-600 rounded-2xl font-black text-xl mt-4 transition-all duration-500 flex items-center justify-center gap-4 shadow-[0_10px_40px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-[0.98] group/btn"
-              >
-                {isProcessing ? (
-                  <><div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>Processing...</>
-                ) : (
-                  <>
-                    Confirm & Pay
-                    <CheckCircle2 size={22} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-                  </>
-                )}
-              </button>
-              
-              <p className="text-center text-[10px] text-neutral-600 font-bold uppercase tracking-[0.2em]">Protected by Stripe & AES-256 Encryption</p>
-            </div>
+            <StripeCheckoutForm 
+              amount={PRICE_MXN} 
+              onSuccess={() => {
+                setShowPaymentModal(false);
+                setIsPaid(true);
+              }}
+              onCancel={() => setShowPaymentModal(false)}
+            />
           </div>
         </div>
       )}
