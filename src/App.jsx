@@ -221,6 +221,100 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
   );
 };
 
+// ================= STRIPE CHECKOUT COMPONENT (MOCKED UI FOR PREVIEW) =================
+const StripeCheckoutForm = ({ amount, onSuccess, onCancel }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [expiry, setExpiry] = useState("");
+  const [cvc, setCvc] = useState("");
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    if (!cardNumber || !expiry || !cvc) {
+      setErrorMessage("Please fill in all card details.");
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage("");
+
+    setTimeout(() => {
+      setIsProcessing(false);
+      onSuccess();
+    }, 2000);
+  };
+
+  return (
+    <form onSubmit={handlePayment} className="space-y-10">
+      <div className="bg-black/40 border border-white/5 p-8 rounded-3xl relative overflow-hidden group/amount">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-[40px] rounded-full -mr-16 -mt-16 group-hover/amount:bg-indigo-600/10 transition-colors" />
+        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-[0.3em] mb-3">Amount Due</p>
+        <div className="flex items-baseline gap-3">
+          <p className="text-6xl font-black text-white tracking-tighter">${amount}.00</p>
+          <p className="text-neutral-500 font-black uppercase tracking-widest">MXN</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">Secure Card Details</label>
+        <div className="bg-neutral-950 border border-white/5 p-4 rounded-2xl shadow-inner focus-within:border-indigo-500/50 transition-colors flex items-center gap-3">
+          <CreditCard size={20} className="text-indigo-400" />
+          <input 
+            type="text" 
+            placeholder="Card number" 
+            maxLength={19}
+            value={cardNumber}
+            onChange={(e) => setCardNumber(e.target.value)}
+            className="bg-transparent border-none outline-none text-white font-mono flex-1 placeholder:text-neutral-600 text-lg" 
+          />
+          <input 
+            type="text" 
+            placeholder="MM/YY" 
+            maxLength={5}
+            value={expiry}
+            onChange={(e) => setExpiry(e.target.value)}
+            className="bg-transparent border-none outline-none text-white font-mono w-16 text-center placeholder:text-neutral-600 text-lg border-l border-white/5 pl-3" 
+          />
+          <input 
+            type="password" 
+            placeholder="CVC" 
+            maxLength={4}
+            value={cvc}
+            onChange={(e) => setCvc(e.target.value)}
+            className="bg-transparent border-none outline-none text-white font-mono w-14 text-center placeholder:text-neutral-600 text-lg border-l border-white/5 pl-3" 
+          />
+        </div>
+
+        {errorMessage && (
+          <div className="flex items-center gap-2 text-red-400 mt-2 ml-2 text-sm font-medium">
+            <AlertCircle size={16} />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+      </div>
+
+      <button 
+        type="submit" 
+        disabled={isProcessing}
+        className="w-full py-6 bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-neutral-800 disabled:text-neutral-600 rounded-2xl font-black text-xl mt-4 transition-all duration-500 flex items-center justify-center gap-4 shadow-[0_10px_40px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-[0.98] group/btn"
+      >
+        {isProcessing ? (
+          <><div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>Processing...</>
+        ) : (
+          <>
+            Confirm & Pay
+            <CheckCircle2 size={22} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+          </>
+        )}
+      </button>
+      
+      <p className="text-center text-[10px] text-neutral-600 font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+        <CreditCard size={14}/> Protected by Stripe & AES-256 Encryption
+      </p>
+    </form>
+  );
+};
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -234,6 +328,7 @@ const App = () => {
   const [isSavingToCloud, setIsSavingToCloud] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [isLoadingDesign, setIsLoadingDesign] = useState(true);
+  const [isSharedMode, setIsSharedMode] = useState(false); // <--- New State for Header Visibility
   
   // Image editor state
   const [editingId, setEditingId] = useState(null);
@@ -284,6 +379,7 @@ const App = () => {
           
           if (docSnap.exists()) {
             setImages(docSnap.data().images || {});
+            setIsSharedMode(true); // <--- Hide the header
             setView('games'); // Skip directly to games
           } else {
             console.error("Shared design not found.");
@@ -804,39 +900,41 @@ const App = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
       </div>
 
-      {/* Navbar */}
-      <nav className="border-b border-white/5 bg-neutral-950/60 backdrop-blur-2xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setView('editor')}>
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:scale-105 transition-transform duration-300">P</div>
-            <div className="hidden sm:block">
-              <span className="font-black text-xl tracking-tighter block leading-none text-white group-hover:text-indigo-400 transition-colors">POKER<span className="text-neutral-500">STUDIO</span></span>
-              <span className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.3em] mt-1 block">Premium Deck Builder</span>
+      {/* Navbar - Hides if isSharedMode is true */}
+      {!isSharedMode && (
+        <nav className="border-b border-white/5 bg-neutral-950/60 backdrop-blur-2xl sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-8 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setView('editor')}>
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl flex items-center justify-center font-black text-2xl shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:scale-105 transition-transform duration-300">P</div>
+              <div className="hidden sm:block">
+                <span className="font-black text-xl tracking-tighter block leading-none text-white group-hover:text-indigo-400 transition-colors">POKER<span className="text-neutral-500">STUDIO</span></span>
+                <span className="text-[10px] text-neutral-500 font-black uppercase tracking-[0.3em] mt-1 block">Premium Deck Builder</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 bg-neutral-900/80 p-1.5 rounded-2xl border border-white/5 shadow-inner">
+              {[
+                { id: 'editor', label: 'Design', icon: Palette },
+                { id: 'preview', label: 'Preview', icon: Eye },
+                { id: 'games', label: 'Casino', icon: Rabbit }
+              ].map(item => (
+                <button 
+                  key={item.id}
+                  onClick={() => setView(item.id)}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300 ${
+                    view === item.id || (item.id === 'games' && ['blackjack', 'poker'].includes(view))
+                      ? 'bg-indigo-600 text-white shadow-[0_4px_15px_rgba(79,70,229,0.4)] translate-y-[-1px]' 
+                      : 'text-neutral-500 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <item.icon size={16} strokeWidth={2.5} />
+                  <span className="hidden md:inline">{item.label}</span>
+                </button>
+              ))}
             </div>
           </div>
-
-          <div className="flex items-center gap-1.5 bg-neutral-900/80 p-1.5 rounded-2xl border border-white/5 shadow-inner">
-            {[
-              { id: 'editor', label: 'Design', icon: Palette },
-              { id: 'preview', label: 'Preview', icon: Eye },
-              { id: 'games', label: 'Casino', icon: Rabbit }
-            ].map(item => (
-              <button 
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300 ${
-                  view === item.id || (item.id === 'games' && ['blackjack', 'poker'].includes(view))
-                    ? 'bg-indigo-600 text-white shadow-[0_4px_15px_rgba(79,70,229,0.4)] translate-y-[-1px]' 
-                    : 'text-neutral-500 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <item.icon size={16} strokeWidth={2.5} />
-                <span className="hidden md:inline">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       <main className="max-w-7xl mx-auto px-8 py-16 relative">
         {view === 'editor' && (
