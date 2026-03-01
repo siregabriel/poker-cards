@@ -36,6 +36,7 @@ const LAYOUTS = {
 
 const CARD_TYPES = [
   { id: 'back', label: 'Deck Back', description: 'Design for the back side', size: '750 x 1050 px' },
+  { id: 'customBackground', label: 'Card Background', description: 'Background for numeric cards', size: '750 x 1050 px' },
   { id: 'joker', label: 'Joker', description: 'Image for both Jokers', size: '750 x 1050 px' },
   ...CUSTOM_RANKS.map(rank => ({
     id: rank,
@@ -54,6 +55,7 @@ const getSuitKey = (card) => {
 // ================= REUSABLE PLAYING CARD COMPONENT =================
 const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", onClick }) => {
   const imgSrc = images[card.id];
+  const bgImg = images.customBackground;
   const isBack = hidden || card.isBack;
   const suitKey = getSuitKey(card);
 
@@ -68,11 +70,11 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
         style={{ transform: `scale(${scale})` }}
       >
         {isBack ? (
-          <div className="absolute inset-0 rounded-2xl bg-neutral-900 border-[8px] border-white overflow-hidden flex items-center justify-center shadow-inner">
+          <div className="absolute inset-0 rounded-2xl bg-neutral-900 overflow-hidden flex items-center justify-center shadow-inner">
             {images.back ? (
               <img src={images.back} className="w-full h-full object-cover" alt="Back" />
             ) : (
-              <div className="text-neutral-800 bg-neutral-950 w-full h-full flex items-center justify-center">
+              <div className="text-neutral-800 bg-neutral-950 w-full h-full flex items-center justify-center border-[8px] border-white">
                 <Layout size={48} strokeWidth={1} className="opacity-20" />
               </div>
             )}
@@ -80,8 +82,15 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
           </div>
         ) : (
           <div className="absolute inset-0 rounded-2xl bg-white overflow-hidden flex flex-col shadow-lg">
+            {/* Custom Background for Numeric Cards */}
+            {!card.isCustom && !card.isJoker && bgImg && (
+              <div className="absolute inset-0 z-0">
+                <img src={bgImg} className="w-full h-full object-cover opacity-40 mix-blend-multiply" alt="Background" />
+              </div>
+            )}
+
             {/* Top Left Corner */}
-            <div className={`absolute top-3 left-3 flex flex-col items-center ${card.textColor}`}>
+            <div className={`absolute top-3 left-3 flex flex-col items-center z-10 ${card.textColor}`}>
               {card.isJoker ? (
                 <div className="flex flex-col items-center font-serif font-black text-[10px] leading-[0.8]">
                   {'JOKER'.split('').map((letter, i) => <span key={i}>{letter}</span>)}
@@ -93,7 +102,7 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
             </div>
 
             {/* Center Content */}
-            <div className={`absolute top-[14%] bottom-[14%] left-[18%] right-[18%] rounded-xl overflow-hidden bg-transparent ${(card.isCustom || card.isJoker) ? 'ring-1 ring-neutral-200 bg-neutral-50 shadow-inner' : ''}`}>
+            <div className={`absolute top-[14%] bottom-[14%] left-[18%] right-[18%] rounded-xl overflow-hidden bg-transparent z-10 ${(card.isCustom || card.isJoker) ? 'ring-1 ring-neutral-200 bg-neutral-50 shadow-inner' : ''}`}>
               {(card.isCustom || card.isJoker) ? (
                 imgSrc ? (
                   <img src={imgSrc} className="w-full h-full object-cover" alt={card.label} />
@@ -118,7 +127,7 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
             </div>
 
             {/* Bottom Right Corner */}
-            <div className={`absolute bottom-3 right-3 flex flex-col items-center rotate-180 ${card.textColor}`}>
+            <div className={`absolute bottom-3 right-3 flex flex-col items-center rotate-180 z-10 ${card.textColor}`}>
               {card.isJoker ? (
                 <div className="flex flex-col items-center font-serif font-black text-[10px] leading-[0.8]">
                   {'JOKER'.split('').map((letter, i) => <span key={i}>{letter}</span>)}
@@ -130,7 +139,7 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
             </div>
             
             {/* Subtle Texture Overlay */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.02)_100%)] pointer-events-none" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.02)_100%)] pointer-events-none z-20" />
           </div>
         )}
       </div>
@@ -362,6 +371,43 @@ const App = () => {
     });
   };
 
+  const handleSaveDesign = () => {
+    const data = JSON.stringify(images);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `poker-studio-design-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoadDesign = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (upload) => {
+        try {
+          const loadedImages = JSON.parse(upload.target.result);
+          setImages(loadedImages);
+        } catch (error) {
+          alert("Error loading design file. Please make sure it is a valid JSON design file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handlePayment = () => {
+    setIsProcessing(true);
+    // Simular procesamiento de pago
+    setTimeout(() => {
+      setIsProcessing(false);
+      setIsPaid(true);
+      setShowPaymentModal(false);
+    }, 2000);
+  };
+
   const loadSuitImagesForPDF = async () => {
     const result = {};
     const load = (src, flip) => new Promise(res => {
@@ -464,6 +510,14 @@ const App = () => {
           const innerW = cardW - 18;
           const innerH = cardH - 20;
 
+          const bgImgData = images.customBackground;
+          if (bgImgData && !card.isCustom && !card.isJoker) {
+            doc.saveGraphicsState();
+            doc.setGState(new doc.GState({ opacity: 0.4 }));
+            doc.addImage(bgImgData, 'JPEG', x + 0.1, y + 0.1, cardW - 0.2, cardH - 0.2);
+            doc.restoreGraphicsState();
+          }
+
           const imgData = images[card.id];
           if (imgData && (card.isCustom || card.isJoker)) {
             doc.setDrawColor(0);
@@ -515,7 +569,7 @@ const App = () => {
     }
   };
 
-  const allImagesUploaded = CARD_TYPES.every(type => images[type.id]);
+  const allImagesUploaded = CARD_TYPES.filter(t => t.id !== 'customBackground').every(type => images[type.id]);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-200 font-sans selection:bg-indigo-500/30 overflow-x-hidden antialiased">
@@ -642,7 +696,22 @@ const App = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center px-1">
                       <span className="text-neutral-400 font-bold uppercase tracking-widest text-xs">Deck Composition</span>
-                      <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/30 uppercase font-black tracking-[0.2em]">54 Cards</span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-2 mr-2 border-r border-white/10 pr-4">
+                          <button 
+                            onClick={handleSaveDesign}
+                            title="Save Design JSON"
+                            className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
+                          >
+                            <Download size={14} />
+                          </button>
+                          <label className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">
+                            <Upload size={14} />
+                            <input type="file" className="hidden" accept=".json" onChange={handleLoadDesign} />
+                          </label>
+                        </div>
+                        <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/30 uppercase font-black tracking-[0.2em]">54 Cards</span>
+                      </div>
                     </div>
                     
                     <div className="space-y-3 bg-neutral-950/50 p-6 rounded-3xl ring-1 ring-white/5 max-h-64 overflow-y-auto custom-scrollbar">
@@ -768,10 +837,20 @@ const App = () => {
                 <p className="text-neutral-500 text-xl max-w-2xl mx-auto leading-relaxed">Experience your custom deck in a professional environment. Use your virtual balance to test the cards in our exclusive mini-games.</p>
               </div>
               
-              <div className="inline-flex items-center gap-4 bg-neutral-900 px-8 py-4 rounded-[2rem] border border-white/5 font-black text-2xl shadow-2xl ring-1 ring-white/5">
+              <div className="inline-flex items-center gap-4 bg-neutral-900 px-8 py-4 rounded-[2rem] border border-white/5 font-black text-2xl shadow-2xl ring-1 ring-white/5 relative group">
                  <Coins className="text-yellow-500" size={28} /> 
                  <span className="text-white">${balance.toLocaleString()}</span>
                  <span className="text-neutral-600 text-xs uppercase tracking-[0.3em] ml-2">Credits</span>
+                 
+                 {balance < 10 && (
+                   <button 
+                     onClick={() => setBalance(prev => prev + 1000)}
+                     className="absolute -right-2 -top-2 bg-green-600 hover:bg-green-500 text-white p-2 rounded-full shadow-lg transition-all hover:scale-110 active:scale-90"
+                     title="Refill Credits"
+                   >
+                     <RotateCcw size={16} strokeWidth={3} />
+                   </button>
+                 )}
               </div>
             </div>
 
