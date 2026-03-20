@@ -1,23 +1,26 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   Upload, CreditCard, Download, Image as ImageIcon, 
-  CheckCircle2, AlertCircle, X, Maximize2, 
+  CheckCircle2, X, Maximize2, 
   RotateCw, ZoomIn, Scissors, Palette, Loader2,
   Eye, Layout, Coins, Play, RotateCcw,
-  Share2, Save, Link as LinkIcon, Cloud, Rabbit
+  Share2, Save, Link as LinkIcon, Cloud, Rabbit, ShieldCheck
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// ================= STRIPE INITIALIZATION =================
+const stripePromise = loadStripe('pk_test_51SsyuyJx3w1bRrWK1BP69wWpOO3qooxOMxnFlJSfV7r9cchJeTp4ElisQbJbli4HwkERDZAndezh69SZ0pd41Fmy00AGeEuuO4');
 
 // ================= FIREBASE INITIALIZATION =================
 let app, auth, db;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'poker-studio-custom';
-const isLocal = typeof __firebase_config === 'undefined';
 
 try {
-  // Verify environment (cloud or local Vite/Vercel)
-  const firebaseConfig = !isLocal 
+  const firebaseConfig = typeof __firebase_config !== 'undefined' 
     ? JSON.parse(__firebase_config) 
     : {
         // Correct API Key and configuration
@@ -83,11 +86,10 @@ const getSuitKey = (card) => {
 };
 
 // ================= IMAGE COMPRESSOR HELPER =================
-// Aggressive compression to ensure it passes Firebase's 1MB limit
 const compressImage = (base64Str, maxSize = 600) => {
   return new Promise((resolve) => {
     if (!base64Str || typeof base64Str !== 'string' || !base64Str.startsWith('data:image')) {
-      resolve(base64Str); // Return as is if not a valid image
+      resolve(base64Str); 
       return;
     }
     const img = new Image();
@@ -95,7 +97,6 @@ const compressImage = (base64Str, maxSize = 600) => {
       let width = img.width;
       let height = img.height;
 
-      // Calculate proportion based on the longest side
       if (width > height) {
         if (width > maxSize) {
           height = Math.round((height * maxSize) / width);
@@ -113,12 +114,10 @@ const compressImage = (base64Str, maxSize = 600) => {
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       
-      // Fill with white background in case it was a transparent PNG (JPEG doesn't support transparency)
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, width, height);
       ctx.drawImage(img, 0, 0, width, height);
 
-      // Compress to JPEG with 50% quality
       resolve(canvas.toDataURL('image/jpeg', 0.5));
     };
     img.onerror = () => resolve(base64Str);
@@ -156,14 +155,12 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
           </div>
         ) : (
           <div className="absolute inset-0 rounded-2xl bg-white overflow-hidden flex flex-col shadow-lg">
-            {/* Custom Background for Numeric Cards */}
             {!card.isCustom && !card.isJoker && bgImg && (
               <div className="absolute inset-0 z-0">
                 <img src={bgImg} className="w-full h-full object-cover opacity-40 mix-blend-multiply" alt="Background" />
               </div>
             )}
 
-            {/* Top Left Corner */}
             <div className={`absolute top-3 left-3 flex flex-col items-center z-10 ${card.textColor}`}>
               {card.isJoker ? (
                 <div className="flex flex-col items-center font-serif font-black text-[10px] leading-[0.8]">
@@ -175,7 +172,6 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
               <img src={SUIT_SVGS[suitKey]} alt="suit" className={`${card.isJoker ? 'w-3.5 h-3.5 mt-1' : 'w-5 h-5 mt-1'}`} />
             </div>
 
-            {/* Center Content */}
             <div className={`absolute top-[14%] bottom-[14%] left-[18%] right-[18%] rounded-xl overflow-hidden bg-transparent z-10 ${(card.isCustom || card.isJoker) ? 'ring-1 ring-neutral-200 bg-neutral-50 shadow-inner' : ''}`}>
               {(card.isCustom || card.isJoker) ? (
                 imgSrc ? (
@@ -200,7 +196,6 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
               )}
             </div>
 
-            {/* Bottom Right Corner */}
             <div className={`absolute bottom-3 right-3 flex flex-col items-center rotate-180 z-10 ${card.textColor}`}>
               {card.isJoker ? (
                 <div className="flex flex-col items-center font-serif font-black text-[10px] leading-[0.8]">
@@ -212,7 +207,6 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
               <img src={SUIT_SVGS[suitKey]} alt="suit" className={`${card.isJoker ? 'w-3.5 h-3.5 mt-1' : 'w-5 h-5 mt-1'}`} />
             </div>
             
-            {/* Subtle Texture Overlay */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_0%,_rgba(0,0,0,0.02)_100%)] pointer-events-none z-20" />
           </div>
         )}
@@ -221,34 +215,160 @@ const PlayingCard = ({ card, images, hidden = false, scale = 1, className = "", 
   );
 };
 
-// ================= STRIPE CHECKOUT COMPONENT (MOCKED UI FOR PREVIEW) =================
-const StripeCheckoutForm = ({ amount, onSuccess, onCancel }) => {
+
+// ================= STRIPE COMPONENTS FOR LOCAL DEVELOPMENT =================
+/* DESCOMENTA ESTE CÓDIGO EN TU VS CODE (DESPUÉS DE INSTALAR LAS LIBRERÍAS)
+  Y BORRA EL COMPONENTE "StripeCheckoutFormMock" QUE ESTÁ ABAJO.
+
+const StripeCheckoutFormReal = ({ amount, onSuccess, onCancel }) => {
+  const stripe = useStripe();
+  const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
 
   const handlePayment = async (e) => {
     e.preventDefault();
-    if (!cardNumber || !expiry || !cvc) {
-      setErrorMessage("Please fill in all card details.");
-      return;
-    }
-
+    if (!stripe || !elements) return;
     setIsProcessing(true);
     setErrorMessage("");
 
-    setTimeout(() => {
+    const cardElement = elements.getElement(CardElement);
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
       setIsProcessing(false);
-      onSuccess();
-    }, 2000);
+    } else {
+      console.log('[Stripe] PaymentMethod Created successfully:', paymentMethod);
+      // Simula el procesamiento del backend o conéctalo a tu API
+      setTimeout(() => {
+        setIsProcessing(false);
+        onSuccess();
+      }, 2000);
+    }
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        color: '#ffffff',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSmoothing: 'antialiased',
+        fontSize: '18px',
+        '::placeholder': { color: '#525252' },
+        iconColor: '#818cf8',
+      },
+      invalid: { color: '#ef4444', iconColor: '#ef4444' },
+    },
+    hidePostalCode: true,
   };
 
   return (
     <form onSubmit={handlePayment} className="space-y-10">
       <div className="bg-black/40 border border-white/5 p-8 rounded-3xl relative overflow-hidden group/amount">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-[40px] rounded-full -mr-16 -mt-16 group-hover/amount:bg-indigo-600/10 transition-colors" />
+        <p className="text-[10px] text-neutral-600 font-black uppercase tracking-[0.3em] mb-3">Amount Due</p>
+        <div className="flex items-baseline gap-3">
+          <p className="text-6xl font-black text-white tracking-tighter">${amount}.00</p>
+          <p className="text-neutral-500 font-black uppercase tracking-widest">MXN</p>
+        </div>
+      </div>
+      <div className="space-y-3">
+        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">Secure Card Details</label>
+        <div className="bg-neutral-950 border border-white/5 p-5 rounded-2xl shadow-inner focus-within:border-indigo-500/50 transition-colors">
+          <CardElement options={cardElementOptions} />
+        </div>
+        {errorMessage && <div className="text-red-400 mt-2 text-sm font-medium">{errorMessage}</div>}
+      </div>
+      <button type="submit" disabled={!stripe || isProcessing} className="w-full py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xl flex items-center justify-center">
+        {isProcessing ? "Processing..." : "Confirm & Pay"}
+      </button>
+    </form>
+  );
+};
+*/
+
+// ================= STRIPE CHECKOUT FORM (REAL) =================
+const StripeCheckoutForm = ({ amount, onSuccess, onCancel }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setIsProcessing(true);
+    setErrorMessage("");
+
+    const cardElement = elements.getElement(CardElement);
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsProcessing(false);
+    } else {
+      console.log('[Stripe] PaymentMethod Created successfully:', paymentMethod);
+      
+      try {
+        // Al usar el proxy de Vite configurado en vite.config.js, 
+        // simplemente llamamos a la ruta relativa y Vite se encargará de redirigirla al puerto 3000 (Vercel).
+        const response = await fetch('/api/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentMethodId: paymentMethod.id,
+            amount: amount
+          }),
+        });
+
+        const data = await response.json();
+        console.log('[Stripe Backend Response]:', data);
+
+        if (data.success) {
+          setIsProcessing(false);
+          onSuccess();
+        } else {
+          setErrorMessage(data.error || "Payment failed at the server.");
+          setIsProcessing(false);
+        }
+      } catch (err) {
+        console.error('[Stripe Network Error]:', err);
+        setErrorMessage("Network error: Could not reach the payment server. Make sure you are running 'npx vercel dev' in a second terminal.");
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        color: '#ffffff',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSmoothing: 'antialiased',
+        fontSize: '18px',
+        '::placeholder': { color: '#525252' },
+        iconColor: '#818cf8',
+      },
+      invalid: { color: '#ef4444', iconColor: '#ef4444' },
+    },
+    hidePostalCode: true,
+  };
+
+  return (
+    <form onSubmit={handlePayment} className="space-y-10">
+      {/* Sandbox Badge */}
+      <div className="absolute top-12 -right-12 rotate-45 bg-amber-500 text-black text-[10px] font-black px-12 py-1 shadow-xl z-50 uppercase tracking-widest">
+        Sandbox Mode
+      </div>
+
+      <div className="bg-black/40 border border-white/5 p-8 rounded-3xl relative overflow-hidden group/amount">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-[40px] rounded-full -mr-16 -mt-16" />
         <p className="text-[10px] text-neutral-600 font-black uppercase tracking-[0.3em] mb-3">Amount Due</p>
         <div className="flex items-baseline gap-3">
           <p className="text-6xl font-black text-white tracking-tighter">${amount}.00</p>
@@ -256,65 +376,69 @@ const StripeCheckoutForm = ({ amount, onSuccess, onCancel }) => {
         </div>
       </div>
 
-      <div className="space-y-3">
-        <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] ml-2">Secure Card Details</label>
-        <div className="bg-neutral-950 border border-white/5 p-4 rounded-2xl shadow-inner focus-within:border-indigo-500/50 transition-colors flex items-center gap-3">
-          <CreditCard size={20} className="text-indigo-400" />
-          <input 
-            type="text" 
-            placeholder="Card number" 
-            maxLength={19}
-            value={cardNumber}
-            onChange={(e) => setCardNumber(e.target.value)}
-            className="bg-transparent border-none outline-none text-white font-mono flex-1 placeholder:text-neutral-600 text-lg" 
-          />
-          <input 
-            type="text" 
-            placeholder="MM/YY" 
-            maxLength={5}
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.value)}
-            className="bg-transparent border-none outline-none text-white font-mono w-16 text-center placeholder:text-neutral-600 text-lg border-l border-white/5 pl-3" 
-          />
-          <input 
-            type="password" 
-            placeholder="CVC" 
-            maxLength={4}
-            value={cvc}
-            onChange={(e) => setCvc(e.target.value)}
-            className="bg-transparent border-none outline-none text-white font-mono w-14 text-center placeholder:text-neutral-600 text-lg border-l border-white/5 pl-3" 
-          />
+      <div className="space-y-4">
+        <div className="flex justify-between items-center px-2">
+          <label className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">Secure Payment Details</label>
+          <div className="flex items-center gap-2 opacity-50 grayscale hover:opacity-100 hover:grayscale-0 transition-all">
+             <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-3" />
+             <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-5" />
+             <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-4" />
+          </div>
+        </div>
+        
+        <div className="bg-neutral-950 border border-white/5 p-5 rounded-2xl shadow-inner focus-within:border-indigo-500/50 transition-colors">
+          <CardElement options={cardElementOptions} />
+        </div>
+
+        <div className="flex items-center gap-3 px-3 py-2 bg-indigo-500/5 border border-indigo-500/10 rounded-xl">
+           <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
+           <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Test Card: <span className="font-mono ml-1">4242 4242 4242 4242</span></p>
         </div>
 
         {errorMessage && (
           <div className="flex items-center gap-2 text-red-400 mt-2 ml-2 text-sm font-medium">
-            <AlertCircle size={16} />
+            <X size={16} className="text-red-400" />
             <span>{errorMessage}</span>
           </div>
         )}
       </div>
 
-      <button 
-        type="submit" 
-        disabled={isProcessing}
-        className="w-full py-6 bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-neutral-800 disabled:text-neutral-600 rounded-2xl font-black text-xl mt-4 transition-all duration-500 flex items-center justify-center gap-4 shadow-[0_10px_40px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-[0.98] group/btn"
-      >
-        {isProcessing ? (
-          <><div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>Processing...</>
-        ) : (
-          <>
-            Confirm & Pay
-            <CheckCircle2 size={22} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
-          </>
-        )}
-      </button>
+      <div className="flex gap-4">
+        <button 
+          type="button"
+          onClick={onCancel}
+          className="flex-1 py-4 border-2 border-neutral-800 text-neutral-500 hover:bg-neutral-800 hover:text-white rounded-2xl font-black text-sm uppercase transition-all"
+        >
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          disabled={!stripe || isProcessing}
+          className="flex-2 py-6 bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-neutral-800 disabled:text-neutral-600 rounded-2xl font-black text-xl transition-all duration-500 flex items-center justify-center gap-4 shadow-[0_10px_40px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-[0.98] group/btn"
+        >
+          {isProcessing ? (
+            <><div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>Processing...</>
+          ) : (
+            <>
+              Confirm & Pay
+              <CheckCircle2 size={22} className="opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+            </>
+          )}
+        </button>
+      </div>
       
-      <p className="text-center text-[10px] text-neutral-600 font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-2">
-        <CreditCard size={14}/> Protected by Stripe & AES-256 Encryption
-      </p>
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center gap-2 text-[10px] text-neutral-600 font-bold uppercase tracking-[0.2em]">
+          <ShieldCheck size={14} className="text-green-500/50" /> Secure 256-bit SSL Encryption
+        </div>
+        <p className="text-[9px] text-neutral-700 font-medium text-center leading-relaxed">
+          Your payment is processed securely by Stripe. We do not store your card details.
+        </p>
+      </div>
     </form>
   );
 };
+
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -340,7 +464,7 @@ const App = () => {
     const initAuth = async () => {
       if (!auth) return; // Safely skip if Firebase auth wasn't initialized
       try {
-        if (!isLocal && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        if (typeof __firebase_config !== 'undefined' && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
           // This signs in anonymously locally
@@ -706,16 +830,6 @@ const App = () => {
       };
       reader.readAsText(file);
     }
-  };
-
-  const handlePayment = () => {
-    setIsProcessing(true);
-    // Simulate payment processing
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsPaid(true);
-      setShowPaymentModal(false);
-    }, 2000);
   };
 
   const loadSuitImagesForPDF = async () => {
@@ -1605,7 +1719,7 @@ const App = () => {
         </div>
       )}
 
-      {/* ================= MODAL: SECURE PAYMENT (MOCKED UI FOR PREVIEW) ================= */}
+      {/* ================= MODAL: SECURE PAYMENT ================= */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-8 bg-neutral-950/90 backdrop-blur-2xl animate-in fade-in duration-500">
           <div className="bg-neutral-900 border border-white/10 w-full max-w-lg rounded-[3.5rem] p-12 animate-in zoom-in slide-in-from-bottom-8 duration-700 shadow-[0_50px_150px_rgba(0,0,0,0.8)] relative overflow-hidden">
@@ -1619,14 +1733,17 @@ const App = () => {
               <button onClick={() => setShowPaymentModal(false)} className="p-3 hover:bg-white/5 rounded-2xl text-neutral-500 hover:text-white transition-colors"><X /></button>
             </div>
 
-            <StripeCheckoutForm 
-              amount={PRICE_MXN} 
-              onSuccess={() => {
-                setShowPaymentModal(false);
-                setIsPaid(true);
-              }}
-              onCancel={() => setShowPaymentModal(false)}
-            />
+            <Elements stripe={stripePromise}>
+              <StripeCheckoutForm 
+                amount={PRICE_MXN} 
+                onSuccess={() => {
+                  setShowPaymentModal(false);
+                  setIsPaid(true);
+                }}
+                onCancel={() => setShowPaymentModal(false)} 
+              />
+            </Elements>
+
           </div>
         </div>
       )}
