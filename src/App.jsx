@@ -1421,6 +1421,16 @@ const App = () => {
               <div className="space-y-6">
                 <h1 className="text-7xl font-black text-indigo-500 tracking-tight">You Followed the <span className="text-white">White Rabbit</span></h1>
                 <p className="text-neutral-500 text-xl max-w-1l mx-auto leading-relaxed">Curiouser and curiouser! You followed the White Rabbit down the hole and landed straight at the Atlas Blackjack and Poker table. Welcome to the madness—ready to chase 21.</p>
+                
+                {/* Mensaje motivacional para empleados */}
+                <div className="max-w-2xl mx-auto mt-8 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-6 backdrop-blur-sm">
+                  <p className="text-neutral-300 text-center leading-relaxed text-base">
+                    We deeply value your dedication and commitment to our community. 
+                    <span className="text-indigo-400 font-semibold"> Take 5 minutes to clear your mind, recharge, and return to work refreshed.</span>
+                    <br />
+                    <span className="text-neutral-500 text-sm mt-2 block">You've earned this break.</span>
+                  </p>
+                </div>
               </div>
               
               <div className="inline-flex items-center gap-4 bg-neutral-900 px-8 py-4 rounded-[2rem] border border-white/5 font-black text-2xl shadow-2xl ring-1 ring-white/5 relative group">
@@ -1447,12 +1457,12 @@ const App = () => {
                       <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
                         <X size={24} className="text-white" strokeWidth={3} />
                       </div>
-                      <h3 className="text-3xl font-black text-amber-400 tracking-tight">Tiempo de Juego Agotado</h3>
+                      <h3 className="text-3xl font-black text-amber-400 tracking-tight">Game Time Depleted</h3>
                     </div>
                     <p className="text-neutral-300 text-center leading-relaxed mb-4">
-                      Has alcanzado el límite de 5 minutos de juego. Recuerda que esto es solo un descanso. 
+                      You've reached the 5-minute play limit. Remember, this is just a quick break. 
                       <br />
-                      <span className="text-amber-400 font-bold">¡Vuelve al trabajo y regresa más tarde!</span>
+                      <span className="text-amber-400 font-bold">Get back to work and return later!</span>
                     </p>
                     
                     {remainingCooldown > 0 && (
@@ -1461,32 +1471,32 @@ const App = () => {
                           <div className="w-8 h-8 bg-indigo-500/20 rounded-full flex items-center justify-center">
                             <span className="text-lg">⏳</span>
                           </div>
-                          <p className="text-sm font-black text-neutral-400 uppercase tracking-widest">Próxima sesión disponible en:</p>
+                          <p className="text-sm font-black text-neutral-400 uppercase tracking-widest">Next Session Available In:</p>
                         </div>
                         <div className="flex justify-center gap-6">
                           <div className="text-center">
                             <div className="text-4xl font-black text-white font-mono">
                               {Math.floor(remainingCooldown / 3600)}
                             </div>
-                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Horas</div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Hours</div>
                           </div>
                           <div className="text-4xl font-black text-neutral-600 self-center">:</div>
                           <div className="text-center">
                             <div className="text-4xl font-black text-white font-mono">
                               {String(Math.floor((remainingCooldown % 3600) / 60)).padStart(2, '0')}
                             </div>
-                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Minutos</div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Minutes</div>
                           </div>
                           <div className="text-4xl font-black text-neutral-600 self-center">:</div>
                           <div className="text-center">
                             <div className="text-4xl font-black text-white font-mono">
                               {String(remainingCooldown % 60).padStart(2, '0')}
                             </div>
-                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Segundos</div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Seconds</div>
                           </div>
                         </div>
                         <p className="text-xs text-neutral-600 text-center mt-4 font-medium">
-                          Podrás jugar nuevamente después de tu turno de trabajo (8 horas)
+                          You can play again after your work shift (8 hours)
                         </p>
                       </div>
                     )}
@@ -1498,7 +1508,7 @@ const App = () => {
                       }}
                       className="mt-6 px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all mx-auto block"
                     >
-                      Entendido
+                      Got It
                     </button>
                   </div>
                 </div>
@@ -1517,7 +1527,7 @@ const App = () => {
                     if (ENABLE_TIME_LIMIT && isTimeLimitReached) {
                       const hours = Math.floor(remainingCooldown / 3600);
                       const minutes = Math.floor((remainingCooldown % 3600) / 60);
-                      alert(`⏳ Debes esperar ${hours}h ${minutes}m antes de poder jugar nuevamente.\n\nPodrás jugar después de tu turno de trabajo.`);
+                      alert(`⏳ You must wait ${hours}h ${minutes}m before you can play again.\n\nYou can play after your work shift.`);
                       return;
                     }
                     setBjState('betting'); 
@@ -1534,7 +1544,7 @@ const App = () => {
                     if (ENABLE_TIME_LIMIT && isTimeLimitReached) {
                       const hours = Math.floor(remainingCooldown / 3600);
                       const minutes = Math.floor((remainingCooldown % 3600) / 60);
-                      alert(`⏳ Debes esperar ${hours}h ${minutes}m antes de poder jugar nuevamente.\n\nPodrás jugar después de tu turno de trabajo.`);
+                      alert(`⏳ You must wait ${hours}h ${minutes}m before you can play again.\n\nYou can play after your work shift.`);
                       return;
                     }
                     setVpState('betting'); 
@@ -1955,8 +1965,8 @@ const App = () => {
             <span className="text-2xl">⏰</span>
           </div>
           <div className="space-y-0.5">
-            <p className="font-black text-lg leading-none tracking-tight">¡Tiempo casi agotado!</p>
-            <p className="text-xs font-bold opacity-80">Quedan {remainingTime} segundos de juego</p>
+            <p className="font-black text-lg leading-none tracking-tight">Time Almost Up!</p>
+            <p className="text-xs font-bold opacity-80">{remainingTime} seconds remaining</p>
           </div>
         </div>
       )}
