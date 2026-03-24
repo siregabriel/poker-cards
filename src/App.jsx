@@ -44,14 +44,14 @@ const PRICE_MXN = 199;
 
 // ================= TIME LIMIT CONFIGURATION =================
 // Cambia esto a 'false' para desactivar el límite de tiempo de juego
-const ENABLE_TIME_LIMIT = false;
+const ENABLE_TIME_LIMIT = true;
 const TIME_LIMIT_SECONDS = 300; // 5 minutos de juego
 const COOLDOWN_HOURS = 8; // 8 horas de espera entre sesiones (1 turno de trabajo)
 
 // ================= REDIRECT CONFIGURATION =================
 // Cuando está en 'true', al hacer clic en "Got It" redirige a Atlas Senior Living
 // Cuando está en 'false', solo cierra el mensaje y va al editor (para desarrollo local)
-const ENABLE_REDIRECT_ON_TIMEOUT = false;
+const ENABLE_REDIRECT_ON_TIMEOUT = true;
 const REDIRECT_URL = 'https://atlasseniorliving.net';
 
 const RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
