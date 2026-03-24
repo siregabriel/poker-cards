@@ -44,14 +44,14 @@ const PRICE_MXN = 199;
 
 // ================= TIME LIMIT CONFIGURATION =================
 // Cambia esto a 'false' para desactivar el límite de tiempo de juego
-const ENABLE_TIME_LIMIT = true;
+const ENABLE_TIME_LIMIT = false;
 const TIME_LIMIT_SECONDS = 300; // 5 minutos de juego
 const COOLDOWN_HOURS = 8; // 8 horas de espera entre sesiones (1 turno de trabajo)
 
 // ================= REDIRECT CONFIGURATION =================
 // Cuando está en 'true', al hacer clic en "Got It" redirige a Atlas Senior Living
 // Cuando está en 'false', solo cierra el mensaje y va al editor (para desarrollo local)
-const ENABLE_REDIRECT_ON_TIMEOUT = true;
+const ENABLE_REDIRECT_ON_TIMEOUT = false;
 const REDIRECT_URL = 'https://atlasseniorliving.net';
 
 const RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
@@ -1618,6 +1618,15 @@ const App = () => {
                <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle_at_center,_#1e293b_0%,_transparent_100%)]" />
                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/felt.png')]" />
                
+               {/* Atlas Logo Watermark - Grabado en el terciopelo */}
+               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] group-hover/table:opacity-[0.06] transition-opacity duration-700">
+                 <img 
+                   src="/atlas-globe-icon-large.png" 
+                   alt="Atlas Logo" 
+                   className="w-[400px] h-[400px] object-contain grayscale brightness-200 contrast-50"
+                 />
+               </div>
+               
                {/* Dealer Area */}
                <div className="relative z-10 w-full flex flex-col items-center gap-6">
                   <div className="px-4 py-1.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/5 text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em]">
@@ -1631,7 +1640,7 @@ const App = () => {
                          images={images} 
                          hidden={i === 1 && bjState !== 'dealerTurn' && bjState !== 'gameOver'} 
                          scale={0.75} 
-                         className="shadow-2xl hover:translate-y-[-10px] transition-transform duration-500"
+                         className="shadow-2xl hover:translate-y-[-10px] transition-transform duration-500 cursor-grab active:cursor-grabbing"
                        />
                      ))}
                   </div>
@@ -1666,7 +1675,7 @@ const App = () => {
 
                      <div className="flex justify-center space-x-4 perspective-1000">
                         {bjPlayerHand.map((card, i) => (
-                          <PlayingCard key={i} card={card} images={images} scale={0.8} className="shadow-2xl hover:translate-y-[-20px] transition-transform duration-500" />
+                          <PlayingCard key={i} card={card} images={images} scale={0.8} className="shadow-2xl hover:translate-y-[-20px] transition-transform duration-500 cursor-grab active:cursor-grabbing" />
                         ))}
                      </div>
 
@@ -1759,6 +1768,15 @@ const App = () => {
             <div className="bg-neutral-900/40 rounded-[4rem] border border-white/5 p-12 shadow-2xl space-y-12 backdrop-blur-3xl relative overflow-hidden">
                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
                
+               {/* Atlas Logo Watermark - Grabado en el terciopelo */}
+               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] hover:opacity-[0.05] transition-opacity duration-700">
+                 <img 
+                   src="/atlas-globe-icon-large.png" 
+                   alt="Atlas Logo" 
+                   className="w-[500px] h-[500px] object-contain grayscale brightness-200 contrast-50"
+                 />
+               </div>
+               
                {/* Pay Table */}
                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-black/40 p-8 rounded-[2rem] border border-white/5 shadow-inner">
                   {[
@@ -1793,7 +1811,7 @@ const App = () => {
                     {vpHand.length > 0 ? vpHand.map((card, i) => (
                       <div key={i} className="flex flex-col items-center gap-6 group/card">
                         <div 
-                          className={`relative transition-all duration-500 ${vpHeld[i] ? 'translate-y-[-20px]' : 'group-hover/card:translate-y-[-10px]'}`}
+                          className={`relative transition-all duration-500 cursor-grab active:cursor-grabbing ${vpHeld[i] ? 'translate-y-[-20px]' : 'group-hover/card:translate-y-[-10px]'}`}
                           onClick={() => {
                             if (vpState === 'playing') {
                               const newHeld = [...vpHeld];
@@ -2020,6 +2038,19 @@ const App = () => {
           100% { transform: translateY(0px); }
         }
         .animate-float { animation: float 3s ease-in-out infinite; }
+        
+        /* Cursor personalizado para cartas de poker */
+        .cursor-grab {
+          cursor: grab;
+          cursor: -webkit-grab;
+          cursor: -moz-grab;
+        }
+        .cursor-grab:active,
+        .active\\:cursor-grabbing:active {
+          cursor: grabbing;
+          cursor: -webkit-grabbing;
+          cursor: -moz-grabbing;
+        }
       `}} />
     </div>
   );
