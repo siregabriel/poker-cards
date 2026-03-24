@@ -1145,7 +1145,7 @@ const App = () => {
                 <button 
                   key={item.id}
                   onClick={() => setView(item.id)}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300 ${
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all duration-300 cursor-pointer ${
                     view === item.id || (item.id === 'games' && ['blackjack', 'poker'].includes(view))
                       ? 'bg-indigo-600 text-white shadow-[0_4px_15px_rgba(79,70,229,0.4)] translate-y-[-1px]' 
                       : 'text-neutral-500 hover:text-white hover:bg-white/5'
@@ -1189,10 +1189,10 @@ const App = () => {
                       </div>
                       {images[type.id] && (
                         <div className="flex gap-2">
-                          <button onClick={() => setEditingId(type.id)} className="p-2.5 bg-white/5 hover:bg-indigo-500/20 rounded-xl text-neutral-400 hover:text-indigo-400 transition-all duration-300">
+                          <button onClick={() => setEditingId(type.id)} className="p-2.5 bg-white/5 hover:bg-indigo-500/20 rounded-xl text-neutral-400 hover:text-indigo-400 transition-all duration-300 cursor-pointer">
                             <Maximize2 size={16} />
                           </button>
-                          <button onClick={() => removeImage(type.id)} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-neutral-500 hover:text-red-400 transition-all duration-300">
+                          <button onClick={() => removeImage(type.id)} className="p-2.5 bg-red-500/10 hover:bg-red-500/20 rounded-xl text-neutral-500 hover:text-red-400 transition-all duration-300 cursor-pointer">
                             <X size={16} />
                           </button>
                         </div>
@@ -1248,7 +1248,7 @@ const App = () => {
                           <button 
                             onClick={handleSaveDesignLocal}
                             title="Save Backup Locally"
-                            className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all"
+                            className="p-2 bg-neutral-950 rounded-lg ring-1 ring-white/10 text-neutral-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                           >
                             <Save size={14} />
                           </button>
@@ -1289,7 +1289,7 @@ const App = () => {
                         onClick={handleSaveToCloud}
                         className={`w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all duration-300 ${
                           hasAnyImage && !isSavingToCloud
-                            ? "bg-neutral-800 text-white hover:bg-neutral-700 shadow-lg" 
+                            ? "bg-neutral-800 text-white hover:bg-neutral-700 shadow-lg cursor-pointer" 
                             : "bg-neutral-900 text-neutral-600 cursor-not-allowed"
                         }`}
                       >
@@ -1310,7 +1310,7 @@ const App = () => {
                           />
                           <button 
                             onClick={handleCopyLink}
-                            className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white transition-colors"
+                            className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white transition-colors cursor-pointer"
                             title="Copy Link"
                           >
                             <LinkIcon size={16} />
@@ -1341,7 +1341,7 @@ const App = () => {
                           onClick={() => setShowPaymentModal(true)}
                           className={`w-full py-5 rounded-[1.5rem] font-black text-lg flex items-center justify-center gap-4 transition-all duration-500 relative overflow-hidden group/pay ${
                             allImagesUploaded 
-                              ? "bg-indigo-600 text-white shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98]" 
+                              ? "bg-indigo-600 text-white shadow-[0_10px_30px_rgba(79,70,229,0.4)] hover:bg-indigo-500 hover:scale-[1.02] active:scale-[0.98] cursor-pointer" 
                               : "bg-neutral-800 text-neutral-600 cursor-not-allowed grayscale"
                           }`}
                         >
@@ -1353,7 +1353,7 @@ const App = () => {
                         <button 
                           onClick={() => handleDownload(true)}
                           disabled={isGenerating}
-                          className="w-full py-5 rounded-[1.5rem] font-black text-sm flex items-center justify-center gap-3 border-2 border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:text-white hover:border-neutral-700 transition-all duration-300"
+                          className="w-full py-5 rounded-[1.5rem] font-black text-sm flex items-center justify-center gap-3 border-2 border-neutral-800 text-neutral-400 hover:bg-neutral-800 hover:text-white hover:border-neutral-700 transition-all duration-300 cursor-pointer disabled:cursor-not-allowed"
                         >
                           {isGenerating ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} strokeWidth={2.5} />}
                           Get Watermarked Sample
@@ -1362,7 +1362,7 @@ const App = () => {
                     ) : (
                       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <button 
-                          className="w-full py-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-[1.5rem] font-black text-xl flex items-center justify-center gap-4 transition-all duration-500 shadow-[0_10px_40px_rgba(79,70,229,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed"
+                          className="w-full py-6 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white rounded-[1.5rem] font-black text-xl flex items-center justify-center gap-4 transition-all duration-500 shadow-[0_10px_40px_rgba(79,70,229,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer"
                           onClick={() => handleDownload(false)}
                           disabled={isGenerating}
                         >
@@ -1447,7 +1447,7 @@ const App = () => {
                  {balance < 10 && (
                    <button 
                      onClick={() => setBalance(prev => prev + 1000)}
-                     className="absolute -right-2 -top-2 bg-green-600 hover:bg-green-500 text-white p-2 rounded-full shadow-lg transition-all hover:scale-110 active:scale-90"
+                     className="absolute -right-2 -top-2 bg-green-600 hover:bg-green-500 text-white p-2 rounded-full shadow-lg transition-all hover:scale-110 active:scale-90 cursor-pointer"
                      title="Refill Credits"
                    >
                      <RotateCcw size={16} strokeWidth={3} />
@@ -1517,9 +1517,9 @@ const App = () => {
                           setView('editor');
                         }
                       }}
-                      className="mt-6 px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all mx-auto block"
+                      className="mt-6 px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all mx-auto block cursor-pointer"
                     >
-                      Got It
+                      Let's Back to Work
                     </button>
                   </div>
                 </div>
@@ -1594,7 +1594,7 @@ const App = () => {
             <div className="flex flex-col md:flex-row justify-between items-center gap-8">
               <button 
                 onClick={() => setView('games')} 
-                className="group flex items-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest border border-white/5 transition-all"
+                className="group flex items-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest border border-white/5 transition-all cursor-pointer"
               >
                 <RotateCcw size={18} className="group-hover:rotate-[-45deg] transition-transform" /> Exit Table
               </button>
@@ -1655,7 +1655,7 @@ const App = () => {
                      {bjState === 'playing' && (
                        <button 
                          onClick={hitBlackjack}
-                         className="w-20 h-20 bg-neutral-900/80 hover:bg-neutral-800 text-white rounded-full font-black text-xs uppercase tracking-widest border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/hit animate-in fade-in slide-in-from-right-4 duration-500"
+                         className="w-20 h-20 bg-neutral-900/80 hover:bg-neutral-800 text-white rounded-full font-black text-xs uppercase tracking-widest border border-white/10 shadow-2xl transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/hit animate-in fade-in slide-in-from-right-4 duration-500 cursor-pointer"
                        >
                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover/hit:bg-white/10 transition-colors">
                             <Play size={14} className="rotate-90 fill-white" />
@@ -1674,7 +1674,7 @@ const App = () => {
                      {bjState === 'playing' && (
                        <button 
                          onClick={standBlackjack}
-                         className="w-20 h-20 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] border border-white/10 transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/stand animate-in fade-in slide-in-from-left-4 duration-500"
+                         className="w-20 h-20 bg-indigo-600/90 hover:bg-indigo-500 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] border border-white/10 transition-all hover:scale-110 active:scale-90 flex flex-col items-center justify-center gap-1 group/stand animate-in fade-in slide-in-from-left-4 duration-500 cursor-pointer"
                        >
                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center group-hover/stand:bg-white/20 transition-colors">
                             <X size={16} strokeWidth={3} />
@@ -1707,7 +1707,7 @@ const App = () => {
                          <button 
                            key={val}
                            onClick={() => setCurrentBet(val)}
-                           className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${currentBet === val ? 'bg-indigo-600 text-white shadow-lg' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/5'}`}
+                           className={`flex-1 py-3 rounded-xl font-black text-xs transition-all cursor-pointer ${currentBet === val ? 'bg-indigo-600 text-white shadow-lg' : 'text-neutral-600 hover:text-neutral-400 hover:bg-white/5'}`}
                          >
                            ${val}
                          </button>
@@ -1716,7 +1716,7 @@ const App = () => {
                    </div>
                    <button 
                      onClick={startBlackjack}
-                     className="px-16 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.05] active:scale-[0.95]"
+                     className="px-16 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.05] active:scale-[0.95] cursor-pointer"
                    >
                      Deal Cards
                    </button>
@@ -1737,7 +1737,7 @@ const App = () => {
             <div className="flex flex-col md:flex-row justify-between items-center gap-8">
               <button 
                 onClick={() => setView('games')} 
-                className="group flex items-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest border border-white/5 transition-all"
+                className="group flex items-center gap-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-400 hover:text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-widest border border-white/5 transition-all cursor-pointer"
               >
                 <RotateCcw size={18} className="group-hover:rotate-[-45deg] transition-transform" /> Exit Table
               </button>
@@ -1851,7 +1851,7 @@ const App = () => {
                       </div>
                       <button 
                         onClick={startVideoPoker}
-                        className="px-16 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.05] active:scale-[0.95]"
+                        className="px-16 py-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-[2rem] font-black text-xl uppercase tracking-widest shadow-[0_10px_30px_rgba(79,70,229,0.4)] transition-all hover:scale-[1.05] active:scale-[0.95] cursor-pointer"
                       >
                         Deal Hand
                       </button>
@@ -1859,7 +1859,7 @@ const App = () => {
                   ) : (
                     <button 
                       onClick={drawVideoPoker}
-                      className="px-24 py-8 bg-neutral-100 hover:bg-white text-neutral-950 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.2em] shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center gap-4 group"
+                      className="px-24 py-8 bg-neutral-100 hover:bg-white text-neutral-950 rounded-[2.5rem] font-black text-2xl uppercase tracking-[0.2em] shadow-2xl transition-all hover:scale-[1.05] active:scale-[0.95] flex items-center gap-4 group cursor-pointer"
                     >
                       Draw Cards
                       <RotateCw size={24} className="group-hover:rotate-180 transition-transform duration-700" />
