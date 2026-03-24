@@ -48,6 +48,12 @@ const ENABLE_TIME_LIMIT = true;
 const TIME_LIMIT_SECONDS = 300; // 5 minutos de juego
 const COOLDOWN_HOURS = 8; // 8 horas de espera entre sesiones (1 turno de trabajo)
 
+// ================= REDIRECT CONFIGURATION =================
+// Cuando está en 'true', al hacer clic en "Got It" redirige a Atlas Senior Living
+// Cuando está en 'false', solo cierra el mensaje y va al editor (para desarrollo local)
+const ENABLE_REDIRECT_ON_TIMEOUT = true;
+const REDIRECT_URL = 'https://atlasseniorliving.net';
+
 const RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
 const CUSTOM_RANKS = ['A', 'K', 'Q', 'J'];
 const SUITS = ['♥', '♦', '♠', '♣'];
@@ -1503,8 +1509,13 @@ const App = () => {
                     
                     <button 
                       onClick={() => {
-                        // Solo cerrar el mensaje, NO resetear el cooldown
-                        setView('editor');
+                        if (ENABLE_REDIRECT_ON_TIMEOUT) {
+                          // Producción: Redirigir a Atlas Senior Living
+                          window.location.href = REDIRECT_URL;
+                        } else {
+                          // Desarrollo local: Solo cerrar el mensaje y volver al editor
+                          setView('editor');
+                        }
                       }}
                       className="mt-6 px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all mx-auto block"
                     >
