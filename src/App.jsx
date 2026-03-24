@@ -42,6 +42,12 @@ try {
 // Configuration Constants
 const PRICE_MXN = 199;
 
+// ================= TIME LIMIT CONFIGURATION =================
+// Cambia esto a 'false' para desactivar el límite de tiempo de juego
+const ENABLE_TIME_LIMIT = true;
+const TIME_LIMIT_SECONDS = 300; // 5 minutos de juego
+const COOLDOWN_HOURS = 8; // 8 horas de espera entre sesiones (1 turno de trabajo)
+
 const RANKS = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
 const CUSTOM_RANKS = ['A', 'K', 'Q', 'J'];
 const SUITS = ['♥', '♦', '♠', '♣'];
@@ -459,6 +465,14 @@ const App = () => {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
 
+  // ================= TIME LIMIT STATE (5 MINUTES) =================
+  const [gameStartTime, setGameStartTime] = useState(null);
+  const [remainingTime, setRemainingTime] = useState(TIME_LIMIT_SECONDS);
+  const [isTimeLimitReached, setIsTimeLimitReached] = useState(false);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
+  const [cooldownEndTime, setCooldownEndTime] = useState(null);
+  const [remainingCooldown, setRemainingCooldown] = useState(0);
+
   // ================= FIREBASE AUTH & INIT =================
   useEffect(() => {
     const initAuth = async () => {
@@ -563,6 +577,96 @@ const App = () => {
     }
     return newDeck;
   };
+
+  // ================= TIME LIMIT LOGIC (5 MINUTES) =================
+  // Verificar cooldown al cargar la aplicación
+  useEffect(() => {
+    if (!ENABLE_TIME_LIMIT) return;
+    
+    const storedCooldownEnd = localStorage.getItem('gameCooldownEnd');
+    if (storedCooldownEnd) {
+      const cooldownEnd = parseInt(storedCooldownEnd);
+      const now = Date.now();
+      
+      if (now < cooldownEnd) {
+        setCooldownEndTime(cooldownEnd);
+        setIsTimeLimitReached(true);
+      } else {
+        // El cooldown ya expiró, limpiar
+        localStorage.removeItem('gameCooldownEnd');
+      }
+    }
+  }, []);
+
+  // Actualizar el tiempo restante de cooldown cada segundo
+  useEffect(() => {
+    if (!ENABLE_TIME_LIMIT || !cooldownEndTime) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.floor((cooldownEndTime - now) / 1000));
+      
+      setRemainingCooldown(remaining);
+      
+      if (remaining <= 0) {
+        // Cooldown terminado
+        setCooldownEndTime(null);
+        setIsTimeLimitReached(false);
+        localStorage.removeItem('gameCooldownEnd');
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownEndTime]);
+
+  useEffect(() => {
+    if (!ENABLE_TIME_LIMIT) return; // Si está desactivado, no hacer nada
+    
+    // Iniciar temporizador cuando el usuario entra a los juegos
+    if ((view === 'blackjack' || view === 'poker') && !gameStartTime && !isTimeLimitReached) {
+      setGameStartTime(Date.now());
+    }
+
+    // Resetear cuando sale de los juegos (pero NO resetear el cooldown)
+    if (view !== 'blackjack' && view !== 'poker' && view !== 'games') {
+      setGameStartTime(null);
+      setRemainingTime(TIME_LIMIT_SECONDS);
+      setShowTimeWarning(false);
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (!ENABLE_TIME_LIMIT || !gameStartTime || isTimeLimitReached) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+      const remaining = TIME_LIMIT_SECONDS - elapsed;
+
+      if (remaining <= 0) {
+        setIsTimeLimitReached(true);
+        setRemainingTime(0);
+        setShowTimeWarning(false);
+        
+        // Establecer el cooldown de 8 horas
+        const cooldownEnd = Date.now() + (COOLDOWN_HOURS * 60 * 60 * 1000);
+        setCooldownEndTime(cooldownEnd);
+        localStorage.setItem('gameCooldownEnd', cooldownEnd.toString());
+        
+        // Forzar salida a la pantalla de selección de juegos
+        setView('games');
+        clearInterval(interval);
+      } else {
+        setRemainingTime(remaining);
+        // Mostrar advertencia cuando quedan 30 segundos
+        if (remaining <= 30 && !showTimeWarning) {
+          setShowTimeWarning(true);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameStartTime, isTimeLimitReached, showTimeWarning]);
 
   // ================= BLACKJACK STATE & LOGIC =================
   const [bjDeck, setBjDeck] = useState([]);
@@ -1334,6 +1438,71 @@ const App = () => {
                    </button>
                  )}
               </div>
+
+              {/* Mensaje de límite de tiempo alcanzado */}
+              {ENABLE_TIME_LIMIT && isTimeLimitReached && (
+                <div className="animate-in fade-in slide-in-from-top-4 duration-500 max-w-2xl mx-auto">
+                  <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-[2rem] p-8 backdrop-blur-xl">
+                    <div className="flex items-center justify-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
+                        <X size={24} className="text-white" strokeWidth={3} />
+                      </div>
+                      <h3 className="text-3xl font-black text-amber-400 tracking-tight">Tiempo de Juego Agotado</h3>
+                    </div>
+                    <p className="text-neutral-300 text-center leading-relaxed mb-4">
+                      Has alcanzado el límite de 5 minutos de juego. Recuerda que esto es solo un descanso. 
+                      <br />
+                      <span className="text-amber-400 font-bold">¡Vuelve al trabajo y regresa más tarde!</span>
+                    </p>
+                    
+                    {remainingCooldown > 0 && (
+                      <div className="mt-6 bg-neutral-900/60 border border-white/10 rounded-2xl p-6">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                          <div className="w-8 h-8 bg-indigo-500/20 rounded-full flex items-center justify-center">
+                            <span className="text-lg">⏳</span>
+                          </div>
+                          <p className="text-sm font-black text-neutral-400 uppercase tracking-widest">Próxima sesión disponible en:</p>
+                        </div>
+                        <div className="flex justify-center gap-6">
+                          <div className="text-center">
+                            <div className="text-4xl font-black text-white font-mono">
+                              {Math.floor(remainingCooldown / 3600)}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Horas</div>
+                          </div>
+                          <div className="text-4xl font-black text-neutral-600 self-center">:</div>
+                          <div className="text-center">
+                            <div className="text-4xl font-black text-white font-mono">
+                              {String(Math.floor((remainingCooldown % 3600) / 60)).padStart(2, '0')}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Minutos</div>
+                          </div>
+                          <div className="text-4xl font-black text-neutral-600 self-center">:</div>
+                          <div className="text-center">
+                            <div className="text-4xl font-black text-white font-mono">
+                              {String(remainingCooldown % 60).padStart(2, '0')}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider mt-1">Segundos</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-neutral-600 text-center mt-4 font-medium">
+                          Podrás jugar nuevamente después de tu turno de trabajo (8 horas)
+                        </p>
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={() => {
+                        // Solo cerrar el mensaje, NO resetear el cooldown
+                        setView('editor');
+                      }}
+                      className="mt-6 px-8 py-3 bg-amber-500 hover:bg-amber-400 text-black rounded-xl font-black text-sm uppercase tracking-widest transition-all mx-auto block"
+                    >
+                      Entendido
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
@@ -1344,7 +1513,16 @@ const App = () => {
                   desc: 'Challenge the house and hit 21 using your unique custom deck.',
                   icon: Rabbit,
                   accent: 'indigo',
-                  action: () => { setBjState('betting'); setView('blackjack'); }
+                  action: () => { 
+                    if (ENABLE_TIME_LIMIT && isTimeLimitReached) {
+                      const hours = Math.floor(remainingCooldown / 3600);
+                      const minutes = Math.floor((remainingCooldown % 3600) / 60);
+                      alert(`⏳ Debes esperar ${hours}h ${minutes}m antes de poder jugar nuevamente.\n\nPodrás jugar después de tu turno de trabajo.`);
+                      return;
+                    }
+                    setBjState('betting'); 
+                    setView('blackjack'); 
+                  }
                 },
                 { 
                   id: 'poker', 
@@ -1352,13 +1530,22 @@ const App = () => {
                   desc: 'Classic Jacks or Better. Aim for the Royal Flush and multiply your credits.',
                   icon: Play,
                   accent: 'purple',
-                  action: () => { setVpState('betting'); setView('poker'); }
+                  action: () => { 
+                    if (ENABLE_TIME_LIMIT && isTimeLimitReached) {
+                      const hours = Math.floor(remainingCooldown / 3600);
+                      const minutes = Math.floor((remainingCooldown % 3600) / 60);
+                      alert(`⏳ Debes esperar ${hours}h ${minutes}m antes de poder jugar nuevamente.\n\nPodrás jugar después de tu turno de trabajo.`);
+                      return;
+                    }
+                    setVpState('betting'); 
+                    setView('poker'); 
+                  }
                 }
               ].map(game => (
                 <div 
                   key={game.id}
                   onClick={game.action}
-                  className="group bg-neutral-900/40 border border-white/5 rounded-[3rem] p-12 hover:bg-neutral-900/60 hover:border-white/10 transition-all duration-500 cursor-pointer shadow-2xl relative overflow-hidden flex flex-col items-start"
+                  className={`group bg-neutral-900/40 border border-white/5 rounded-[3rem] p-12 hover:bg-neutral-900/60 hover:border-white/10 transition-all duration-500 cursor-pointer shadow-2xl relative overflow-hidden flex flex-col items-start ${isTimeLimitReached ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className={`absolute -right-12 -bottom-12 opacity-[0.03] text-white group-hover:opacity-10 group-hover:scale-110 transition-all duration-700 pointer-events-none`}>
                      {game.id === 'blackjack' ? <Rabbit size={280} /> : <div className="font-serif font-black text-[18rem] leading-none">A♠</div>}
@@ -1757,6 +1944,43 @@ const App = () => {
           <div className="space-y-1">
             <p className="font-black text-2xl leading-none tracking-tight">Payment Verified!</p>
             <p className="text-sm font-bold text-neutral-500 uppercase tracking-widest">Your HD Masterpiece is Ready</p>
+          </div>
+        </div>
+      )}
+
+      {/* ================= NOTIFICATION: TIME WARNING (30 SECONDS) ================= */}
+      {showTimeWarning && !isTimeLimitReached && (view === 'blackjack' || view === 'poker') && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[130] bg-amber-500/90 border-2 border-amber-400 text-black px-8 py-4 rounded-[2rem] shadow-[0_20px_60px_rgba(251,191,36,0.6)] flex items-center gap-4 animate-in slide-in-from-top-8 duration-500 backdrop-blur-xl">
+          <div className="w-10 h-10 bg-black/20 rounded-full flex items-center justify-center animate-pulse">
+            <span className="text-2xl">⏰</span>
+          </div>
+          <div className="space-y-0.5">
+            <p className="font-black text-lg leading-none tracking-tight">¡Tiempo casi agotado!</p>
+            <p className="text-xs font-bold opacity-80">Quedan {remainingTime} segundos de juego</p>
+          </div>
+        </div>
+      )}
+
+      {/* ================= FIXED TIMER DISPLAY (ALWAYS VISIBLE) ================= */}
+      {ENABLE_TIME_LIMIT && (view === 'blackjack' || view === 'poker') && (
+        <div className="fixed top-24 right-8 z-[100] animate-in slide-in-from-right-8 duration-500">
+          <div className={`px-6 py-4 rounded-2xl border-2 flex items-center gap-3 font-black transition-all shadow-2xl backdrop-blur-xl ${
+            remainingTime <= 30 
+              ? 'bg-red-500/90 border-red-400 animate-pulse' 
+              : 'bg-neutral-900/90 border-white/10'
+          }`}>
+            <div className="flex flex-col items-center gap-1">
+              <div className={`w-3 h-3 rounded-full ${remainingTime <= 30 ? 'bg-white animate-pulse' : 'bg-green-500'}`} />
+              <span className="text-[8px] uppercase tracking-wider opacity-60 text-white">Time</span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-2xl font-mono leading-none ${remainingTime <= 30 ? 'text-white' : 'text-white'}`}>
+                {Math.floor(remainingTime / 60)}:{String(remainingTime % 60).padStart(2, '0')}
+              </span>
+              <span className="text-[9px] uppercase tracking-widest opacity-60 text-white mt-0.5">
+                {remainingTime <= 30 ? 'Hurry!' : 'Remaining'}
+              </span>
+            </div>
           </div>
         </div>
       )}
