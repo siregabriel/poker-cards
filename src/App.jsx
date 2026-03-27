@@ -585,7 +585,7 @@ const App = () => {
   };
 
   // ================= TIME LIMIT LOGIC (5 MINUTES) =================
-  // Verificar cooldown al cargar la aplicación
+  // Verificar cooldown y sesión activa al cargar la aplicación
   useEffect(() => {
     if (!ENABLE_TIME_LIMIT) return;
     
@@ -657,17 +657,12 @@ const App = () => {
       localStorage.setItem('gameSessionStart', now.toString());
     }
 
-    // Limpiar sesión cuando sale de los juegos (pero NO resetear el cooldown)
+    // NO limpiar la sesión automáticamente al cambiar de vista
+    // Solo resetear el estado visual, pero mantener gameSessionStart en localStorage
     if (view !== 'blackjack' && view !== 'poker' && view !== 'games') {
-      if (gameStartTime && !isTimeLimitReached) {
-        // Solo limpiar si no se agotó el tiempo
-        localStorage.removeItem('gameSessionStart');
-      }
-      setGameStartTime(null);
-      setRemainingTime(TIME_LIMIT_SECONDS);
       setShowTimeWarning(false);
     }
-  }, [view]);
+  }, [view, gameStartTime, isTimeLimitReached]);
 
   useEffect(() => {
     if (!ENABLE_TIME_LIMIT || !gameStartTime || isTimeLimitReached) return;
