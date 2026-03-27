@@ -602,6 +602,27 @@ const App = () => {
         localStorage.removeItem('gameCooldownEnd');
       }
     }
+    
+    // Verificar si hay una sesión activa guardada
+    const storedSessionStart = localStorage.getItem('gameSessionStart');
+    if (storedSessionStart && !storedCooldownEnd) {
+      const sessionStart = parseInt(storedSessionStart);
+      const now = Date.now();
+      const elapsed = Math.floor((now - sessionStart) / 1000);
+      
+      if (elapsed < TIME_LIMIT_SECONDS) {
+        // La sesión aún es válida, restaurarla
+        setGameStartTime(sessionStart);
+        setRemainingTime(TIME_LIMIT_SECONDS - elapsed);
+      } else {
+        // La sesión expiró mientras estaba cerrada, activar cooldown
+        localStorage.removeItem('gameSessionStart');
+        const cooldownEnd = now + (COOLDOWN_HOURS * 60 * 60 * 1000);
+        setCooldownEndTime(cooldownEnd);
+        setIsTimeLimitReached(true);
+        localStorage.setItem('gameCooldownEnd', cooldownEnd.toString());
+      }
+    }
   }, []);
 
   // Actualizar el tiempo restante de cooldown cada segundo
@@ -627,15 +648,21 @@ const App = () => {
   }, [cooldownEndTime]);
 
   useEffect(() => {
-    if (!ENABLE_TIME_LIMIT) return; // Si está desactivado, no hacer nada
+    if (!ENABLE_TIME_LIMIT) return;
     
     // Iniciar temporizador cuando el usuario entra a los juegos
     if ((view === 'blackjack' || view === 'poker') && !gameStartTime && !isTimeLimitReached) {
-      setGameStartTime(Date.now());
+      const now = Date.now();
+      setGameStartTime(now);
+      localStorage.setItem('gameSessionStart', now.toString());
     }
 
-    // Resetear cuando sale de los juegos (pero NO resetear el cooldown)
+    // Limpiar sesión cuando sale de los juegos (pero NO resetear el cooldown)
     if (view !== 'blackjack' && view !== 'poker' && view !== 'games') {
+      if (gameStartTime && !isTimeLimitReached) {
+        // Solo limpiar si no se agotó el tiempo
+        localStorage.removeItem('gameSessionStart');
+      }
       setGameStartTime(null);
       setRemainingTime(TIME_LIMIT_SECONDS);
       setShowTimeWarning(false);
@@ -653,6 +680,9 @@ const App = () => {
         setIsTimeLimitReached(true);
         setRemainingTime(0);
         setShowTimeWarning(false);
+        
+        // Limpiar la sesión activa
+        localStorage.removeItem('gameSessionStart');
         
         // Establecer el cooldown de 8 horas
         const cooldownEnd = Date.now() + (COOLDOWN_HOURS * 60 * 60 * 1000);
